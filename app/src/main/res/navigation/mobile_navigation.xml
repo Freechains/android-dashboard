@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/nav_home">
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="org.freechains.android.dashboard.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/frag_home" />
+
+    <fragment
+        android:id="@+id/nav_chains"
+        android:name="org.freechains.android.dashboard.ChainsFragment"
+        android:label="Chains"
+        tools:layout="@layout/frag_chains" />
+
+    <fragment
+        android:id="@+id/nav_peers"
+        android:name="org.freechains.android.dashboard.PeersFragment"
+        android:label="Peers"
+        tools:layout="@layout/frag_peers" />
+
+    <fragment
+        android:id="@+id/nav_identity"
+        android:name="org.freechains.android.dashboard.IdsFragment"
+        android:label="Identity"
+        tools:layout="@layout/frag_ids_id" />
+
+    <fragment
+        android:id="@+id/nav_contacts"
+        android:name="org.freechains.android.dashboard.CtsFragment"
+        android:label="Contacts"
+        tools:layout="@layout/frag_ids_id" />
+
+</navigation>
