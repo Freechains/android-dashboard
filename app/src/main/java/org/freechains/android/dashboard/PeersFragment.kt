@@ -19,8 +19,8 @@ data class XPeer (
 class PeersFragment : Fragment ()
 {
     private val outer = this
-    lateinit var main: MainActivity
-    lateinit var data: List<XPeer>
+    lateinit private var main: MainActivity
+    lateinit private var data: List<XPeer>
 
     //this.adapter.notifyDataSetChanged()
 

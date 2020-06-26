@@ -10,32 +10,43 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import org.freechains.cli.main_cli_assert
+import org.freechains.common.listSplit
+import kotlin.concurrent.thread
+
+data class XChain (
+    val name   : String,
+    val heads  : List<String>,
+    val blocks : List<String>
+)
 
 class ChainsFragment : Fragment ()
 {
     private val outer = this
     private lateinit var main: MainActivity
-
-    private var data: List<Chain> = LOCAL.read { it.chains }
-    private val cb = {
-        this.data = LOCAL.read { it.chains }
-        this.adapter.notifyDataSetChanged()
-    }
-
-    override fun onDestroyView() {
-        this.main.adapters.remove(this.cb)
-        super.onDestroyView()
-    }
+    private lateinit var data: List<XChain>
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.main.adapters.add(this.cb)
+        thread {
+            this.data = main_cli_assert(arrayOf("chains", "list"))
+                .listSplit()
+                .map { chain ->
+                    val heads= main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
+                    val gen= main_cli_assert(arrayOf("chain", chain, "genesis"))
+                    val blocks= main_cli_assert(arrayOf("chain", chain, "traverse", "all", gen)).listSplit().reversed().plus(gen)
+                    XChain(chain, heads, blocks)
+                }
+            //this.adapter.notifyDataSetChanged()
+        }.join()
+
         inflater.inflate(R.layout.frag_chains, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
                 it.setAdapter(this.adapter)
                 it.setOnItemLongClickListener { _,view,_,_ ->
                     if (view is LinearLayout && view.tag is String) {
                         this.main.chains_leave_ask(view.tag.toString())
+                        TODO("callback to remove and reload")
                         true
                     } else {
                         false
@@ -45,6 +56,7 @@ class ChainsFragment : Fragment ()
             view.findViewById<FloatingActionButton>(R.id.but_join).let {
                 it.setOnClickListener {
                     this.main.chains_join_ask()
+                    TODO("callback to add")
                 }
             }
             return view
