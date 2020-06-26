@@ -28,7 +28,7 @@ class HomeFragment : Fragment ()
             view.findViewById<ImageView>(R.id.but_sync).setOnClickListener {
                 (this.activity as MainActivity).peers_sync(true)
             }
-            view.findViewById<ImageView>(R.id.but_reset).setOnClickListener { it ->
+            view.findViewById<ImageView>(R.id.but_reset).setOnClickListener { _ ->
                 (this.activity as MainActivity).host_recreate_ask()
             }
             return view

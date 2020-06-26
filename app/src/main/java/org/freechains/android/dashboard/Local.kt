@@ -71,18 +71,18 @@ object LOCAL {
     @Synchronized
     fun load () {
         this.path = fsRoot!! + "/" + "local.json"
-        val file = File(this.path)
+        val file = File(this.path!!)
         if (!file.exists()) {
             this.data = Local(emptyList(), emptyList(), emptyList(), emptyList())
             this.save(false)
         } else {
-            @UseExperimental(UnstableDefault::class)
+            @OptIn(UnstableDefault::class)
             this.data = Json(JsonConfiguration(prettyPrint=true)).parse(Local.serializer(), file.readText())
         }
     }
 
     private fun save (post: Boolean) {
-        @UseExperimental(UnstableDefault::class)
+        @OptIn(UnstableDefault::class)
         File(this.path!!).writeText(Json(JsonConfiguration(prettyPrint=true)).stringify(Local.serializer(), this.data!!))
         if (post) {
             this.data!!.chains
