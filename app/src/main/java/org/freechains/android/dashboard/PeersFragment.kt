@@ -28,17 +28,16 @@ class PeersFragment : Fragment ()
         this.main = this.activity as MainActivity
         this.data = this.main.boot.peers
             .map {
-                var ms: String? = null
-                var chains: List<String>? = null
-                thread {
-                    ms = main_cli(arrayOf("peer", it, "ping")).let {
+                val (ms,chains) = freeze {
+                    val ms = main_cli(arrayOf("peer", it, "ping")).let {
                         println("<<< $it")
                         if (!it.first) "down" else it.second+"ms"
                     }
-                    chains = main_cli(arrayOf("peer", it, "chains")).let {
+                    val chains = main_cli(arrayOf("peer", it, "chains")).let {
                         if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
                     }
-                }.join()
+                    Pair(ms,chains)
+                }
                 XPeer(it, ms!!, chains!!)
             }
 
@@ -90,7 +89,7 @@ class PeersFragment : Fragment ()
                         if (chain.startsWith('$')) {
                             outer.main.chains_join_ask(chain)
                         } else {
-                            outer.main.bg_chains_join(chain)
+                            outer.main.chains_join(chain)
                         }
                     }
                 }

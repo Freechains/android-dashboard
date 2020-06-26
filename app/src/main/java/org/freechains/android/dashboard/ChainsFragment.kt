@@ -28,8 +28,8 @@ class ChainsFragment : Fragment ()
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        thread {
-            this.data = main_cli_assert(arrayOf("chains", "list"))
+        this.data = freeze {
+            main_cli_assert(arrayOf("chains", "list"))
                 .listSplit()
                 .map { chain ->
                     val heads= main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
@@ -37,8 +37,7 @@ class ChainsFragment : Fragment ()
                     val blocks= main_cli_assert(arrayOf("chain", chain, "traverse", "all", gen)).listSplit().reversed().plus(gen)
                     XChain(chain, heads, blocks)
                 }
-            //this.adapter.notifyDataSetChanged()
-        }.join()
+        }
 
         inflater.inflate(R.layout.frag_chains, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {

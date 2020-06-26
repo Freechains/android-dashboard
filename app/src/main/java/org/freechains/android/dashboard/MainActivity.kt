@@ -28,6 +28,7 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import org.freechains.bootstrap.Chain as Boot_Chain
 import org.freechains.cli.main_cli
 import org.freechains.cli.main_cli_assert
 import org.freechains.host.main_host
@@ -65,11 +66,21 @@ const val T5m_sync    = 30*hour
 const val LEN1000_pay = 1000
 const val LEN10_shared = 10
 const val LEN20_pubpbt = 20
+const val BOOT = "\$bootstrap.7EA6E8E2DD5035AAD58AE761899D2150B9FB06F0C8ADC1B5FE817C4952AC06E6"
+
+fun <T> freeze (f: () -> T): T {
+    var ret: T? = null
+    thread {
+        ret = f()
+    }.join()
+    return ret!!
+}
 
 class MainActivity : AppCompatActivity ()
 {
     var isActive = true
     val adapters: MutableSet<()->Unit> = mutableSetOf()
+    lateinit var boot: Boot_Chain
 
     override fun onPause()  { super.onPause()  ; this.isActive=false }
     override fun onResume() { super.onResume() ; this.isActive=true  }
@@ -114,21 +125,14 @@ class MainActivity : AppCompatActivity ()
         }
         Thread.sleep(500)
 
-        this.setWaiting(false)
-
-        // background sync/reload
-        thread {
-            while (true) {
-                LOCAL
-                    .read    { it.peers }
-                    .map     { this.bg_reloadPeer(it.name) }
-                    .forEach { it() }
-                this.runOnUiThread {
-                    this.peers_sync(false)
-                }
-                Thread.sleep(T5m_sync)
-            }
+        // bootstrap chain
+        freeze {
+            main_cli(arrayOf("chains", "join", BOOT, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
+            main_cli_assert(arrayOf("peer", "192.168.1.100", "recv", BOOT))
         }
+        this.boot = Boot_Chain(BOOT, PORT_8330)
+
+        this.setWaiting(false)
 
         // background listen
         thread {
@@ -141,7 +145,6 @@ class MainActivity : AppCompatActivity ()
                 val (n,chain) = Regex("(\\d+) (.*)").find(v)!!.destructured
                 if (n.toInt() > 0) {
                     this.showNotification("New blocks:", v)
-                    this.bg_reloadChain(chain)
                 }
             }
         }
@@ -173,7 +176,7 @@ class MainActivity : AppCompatActivity ()
             mNotificationManager.createNotificationChannel(channel)
         }
         val mBuilder = NotificationCompat.Builder(applicationContext, "FREECHAINS_CHANNEL_ID")
-            //.setSmallIcon(R.drawable.ic_freechains_notify) // notification icon
+            .setSmallIcon(R.drawable.ic_freechains_notify) // notification icon
             .setContentTitle(title) // title for notification
             .setContentText(message)// message for notification
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
@@ -206,43 +209,6 @@ class MainActivity : AppCompatActivity ()
 
     ////////////////////////////////////////
 
-    fun bg_reloadChain (chain: String) : Wait {
-        val t = thread {
-            val heads  = main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
-            val gen    = main_cli_assert(arrayOf("chain", chain, "genesis"))
-            val blocks = main_cli_assert(arrayOf("chain", chain, "traverse", "all", gen)).let {
-                if (it.isEmpty()) emptyList() else it.split(' ')
-            }
-            if (chain.startsWith("\$bootstrap.")) {
-                val head = heads.first()
-                if (!head.startsWith("0_")) {
-                    val pay = main_cli_assert(arrayOf("chain", chain, "get", "payload", head))
-                    val olds = LOCAL.read { it.chains.map { it.name } }
-                    File(LOCAL.path!!).writeText(pay)
-                    LOCAL.load()
-                    LOCAL.read { it.chains.filter { !olds.contains(it.name) } }.forEach {
-                        if (it.name.startsWith('$')) {
-                            main_cli(arrayOf("chains", "join", it.name, it.key!!))
-                        } else {
-                            main_cli(arrayOf("chains", "join", it.name))
-                        }
-                        this.bg_reloadChain(it.name)
-                    }
-                    LOCAL.read { it.peers }.forEach { this.bg_reloadPeer(it.name) }
-                }
-            }
-            LOCAL.write(false) {
-                it.chains
-                    .first { it.name==chain }
-                    .let {
-                        it.heads  = heads
-                        it.blocks = blocks.reversed().plus(gen)
-                    }
-            }
-        }
-        return { t.join() }
-    }
-
     fun chains_join_ask (chain: String = "") {
         val view = View.inflate(this, R.layout.frag_chains_join, null)
         view.findViewById<EditText>(R.id.edit_name).setText(chain)
@@ -255,10 +221,7 @@ class MainActivity : AppCompatActivity ()
                 val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
                 val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
                 if (!name.startsWith('$') || (pass1.length>=LEN10_shared && pass1==pass2)) {
-                    val size = LOCAL.read { it.ids.size }
-                    thread {
-                        this.bg_chains_join(name,pass1)
-                    }
+                    chains_join(name,pass1)
                 } else {
                     Toast.makeText(
                         applicationContext,
@@ -270,38 +233,21 @@ class MainActivity : AppCompatActivity ()
             .show()
     }
 
-    fun bg_chains_join (chain: String, pass: String? = null) : Wait {
-        val t = thread {
-            val (key,cmd) =
-                if (chain.startsWith('$')) {
-                    val key = main_cli_assert(arrayOf("crypto", "create", "shared", pass!!))
-                    Pair(key, arrayOf("chains", "join", chain, key))
-                } else {
-                    Pair(null, arrayOf("chains", "join", chain))
-                }
-            main_cli(cmd).let { (ok, err) ->
-                if (ok) {
-                    LOCAL.write(true){ it.chains += Chain(chain, key, emptyList(), emptyList()) }
-                    this.bg_reloadChain(chain)()
-                    this.runOnUiThread {
-                        this.peers_sync(true)
-                        Toast.makeText(
-                            this.applicationContext,
-                            "Added chain ${chain.chain2id()}.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } else {
-                    this.runOnUiThread {
-                        Toast.makeText(
-                            this.applicationContext,
-                            "Error joining chain $chain: " + err, Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
+    fun chains_join (chain: String, pass: String? = null) {
+        freeze {
+            val key = if (!chain.startsWith('$')) "" else {
+                " " + main_cli_assert(arrayOf("crypto", "shared", pass!!))
+            }
+            main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "chains add $chain" + key))
+            this.runOnUiThread {
+                this.peers_sync(true)
+                Toast.makeText(
+                    this.applicationContext,
+                    "Added chain ${chain.chain2id()}.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
-        return { t.join() }
     }
 
     fun chains_leave_ask (chain: String) {
@@ -344,7 +290,7 @@ class MainActivity : AppCompatActivity ()
     fun bg_reloadPeer (host: String) : Wait {
         val t = thread {
             val ms = main_cli(arrayOf("peer", host, "ping")).let {
-                if (!it.first) "down" else it.second!!+"ms"
+                if (!it.first) "down" else it.second+"ms"
             }
             val chains = main_cli(arrayOf("peer", host, "chains")).let {
                 if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
@@ -485,7 +431,6 @@ class MainActivity : AppCompatActivity ()
                     this.runOnUiThread {
                         if (progress.progress == progress.max) {
                             val news = counts.toList().filter { it.second > 0 }
-                            news.forEach() { this.bg_reloadChain(it.first) }
                             val news_str = news
                                 .map { "${it.second} ${it.first}" }
                                 .joinToString("\n")
@@ -521,7 +466,7 @@ class MainActivity : AppCompatActivity ()
                 val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
                 if (pass1.length>=LEN20_pubpbt && pass1==pass2) {
                     thread {
-                        val pub = main_cli_assert(arrayOf("crypto", "create", "pubpvt", pass1)).split(' ')[0]
+                        val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass1)).split(' ')[0]
                         var ok = LOCAL.write(true) {
                             if (it.ids.none { it.nick==nick || it.pub==pub }) {
                                 it.ids += Id(nick, pub)
@@ -532,7 +477,7 @@ class MainActivity : AppCompatActivity ()
                         }
                         this.runOnUiThread {
                             val ret = if (ok) {
-                                this.bg_chains_join("@" + LOCAL.read { it.ids.first { it.nick == nick }.pub })
+                                this.chains_join("@" + LOCAL.read { it.ids.first { it.nick == nick }.pub })
                                 "Added identity $nick."
                             } else {
                                 "Identity already exists."
@@ -593,7 +538,7 @@ class MainActivity : AppCompatActivity ()
                 }
                 val ret =
                     if (ok) {
-                        this.bg_chains_join("@" + pub)
+                        this.chains_join("@" + pub)
                         "Added contact $nick."
                     } else {
                         "Contact already exists."
