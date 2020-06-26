@@ -6,14 +6,14 @@
         android:icon="@drawable/ic_home_black_96dp"
         android:title="Home" />
     <item
-        android:id="@+id/nav_chains"
-        android:icon="@drawable/ic_rss_feed_black_96dp"
-        android:title="Chains" />
-
-    <item
         android:id="@+id/nav_peers"
         android:icon="@drawable/ic_devices_black_96dp"
         android:title="Peers" />
+
+    <item
+            android:id="@+id/nav_chains"
+            android:icon="@drawable/ic_rss_feed_black_96dp"
+            android:title="Chains" />
 
     <item
         android:id="@+id/nav_identity"

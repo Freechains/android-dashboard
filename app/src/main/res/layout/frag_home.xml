@@ -16,15 +16,6 @@
             android:layout_height="match_parent" >
 
             <ImageView
-                android:id="@+id/but_chains"
-                android:layout_width="0px"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:minHeight="?attr/listPreferredItemHeightSmall"
-                app:srcCompat="@drawable/ic_rss_feed_black_96dp" />
-
-            <ImageView
                 android:id="@+id/but_peers"
                 android:layout_width="0px"
                 android:layout_height="wrap_content"
@@ -33,22 +24,21 @@
                 android:minHeight="?attr/listPreferredItemHeightSmall"
                 app:srcCompat="@drawable/ic_devices_black_96dp" />
 
+            <ImageView
+                    android:id="@+id/but_chains"
+                    android:layout_width="0px"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:minHeight="?attr/listPreferredItemHeightSmall"
+                    app:srcCompat="@drawable/ic_rss_feed_black_96dp" />
+
         </TableRow>
 
         <TableRow
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:paddingBottom="30dp">
-
-            <TextView
-                android:id="@+id/lbl_chains"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:minHeight="?attr/listPreferredItemHeight"
-                android:text="Chains"
-                android:textSize="24sp" />
 
             <TextView
                 android:id="@+id/lbl_peers"
@@ -59,6 +49,16 @@
                 android:minHeight="?attr/listPreferredItemHeight"
                 android:text="Peers"
                 android:textSize="24sp" />
+
+            <TextView
+                    android:id="@+id/lbl_chains"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:minHeight="?attr/listPreferredItemHeight"
+                    android:text="Chains"
+                    android:textSize="24sp" />
 
         </TableRow>
 
