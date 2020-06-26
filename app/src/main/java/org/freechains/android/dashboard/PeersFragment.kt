@@ -7,26 +7,41 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import org.freechains.cli.main_cli
+import kotlin.concurrent.thread
+
+data class XPeer (
+    val name   : String,
+    var ping   : String = "?",              // x
+    var chains : List<String> = emptyList() // x
+)
 
 class PeersFragment : Fragment ()
 {
     private val outer = this
-    private lateinit var main: MainActivity
+    lateinit var main: MainActivity
+    lateinit var data: List<XPeer>
 
-    private var data: List<Peer> = LOCAL.read { it.peers }
-    private val cb = {
-        this.data = LOCAL.read { it.peers }
-        this.adapter.notifyDataSetChanged()
-    }
-
-    override fun onDestroyView() {
-        this.main.adapters.remove(this.cb)
-        super.onDestroyView()
-    }
+    //this.adapter.notifyDataSetChanged()
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.main.adapters.add(this.cb)
+        this.data = this.main.boot.peers
+            .map {
+                var ms: String? = null
+                var chains: List<String>? = null
+                thread {
+                    ms = main_cli(arrayOf("peer", it, "ping")).let {
+                        println("<<< $it")
+                        if (!it.first) "down" else it.second+"ms"
+                    }
+                    chains = main_cli(arrayOf("peer", it, "chains")).let {
+                        if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
+                    }
+                }.join()
+                XPeer(it, ms!!, chains!!)
+            }
+
         inflater.inflate(R.layout.frag_peers, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
                 it.setAdapter(this.adapter)
