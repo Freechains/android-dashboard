@@ -81,6 +81,17 @@ class ChainsFragment : Fragment ()
         }
     }
 
+    fun fg_chain_get (chain: String, mode: String, block: String) {
+        val pay = this.main.fg {
+            main_cli_assert(arrayOf("chain", chain, "get", mode, block)).take(LEN1000_pay)
+        }
+        AlertDialog.Builder(this.main)
+            .setTitle("Block ${block.block2id()}:")
+            //.setView(msg)
+            .setMessage(pay)
+            .show()
+    }
+
     private val adapter = object : BaseExpandableListAdapter () {
         override fun hasStableIds(): Boolean {
             return false
@@ -102,11 +113,11 @@ class ChainsFragment : Fragment ()
             view.findViewById<TextView>(android.R.id.text1).text = block.block2id()
 
             view.setOnLongClickListener {
-                outer.main.fg_chain_get(chain.name, "block", block)
+                outer.fg_chain_get(chain.name, "block", block)
                 true
             }
             view.setOnClickListener {
-                outer.main.fg_chain_get(chain.name, "payload", block)
+                outer.fg_chain_get(chain.name, "payload", block)
             }
             return view
         }

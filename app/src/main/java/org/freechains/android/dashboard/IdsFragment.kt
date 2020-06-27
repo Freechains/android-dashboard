@@ -33,9 +33,7 @@ class IdsFragment : Fragment ()
             }
             view.findViewById<FloatingActionButton>(R.id.but_add).let {
                 it.setOnClickListener {
-                    this.main.ids_add_ask {
-                        this.adapter.notifyDataSetChanged()
-                    }
+                    this.main.ids_add_ask()
                 }
             }
             return view

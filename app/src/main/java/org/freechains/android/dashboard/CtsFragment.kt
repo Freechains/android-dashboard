@@ -33,9 +33,7 @@ class CtsFragment : Fragment ()
             }
             view.findViewById<FloatingActionButton>(R.id.but_add).let {
                 it.setOnClickListener {
-                    this.main.cts_add_ask {
-                        this.adapter.notifyDataSetChanged()
-                    }
+                    this.main.cts_add_ask()
                 }
             }
             return view

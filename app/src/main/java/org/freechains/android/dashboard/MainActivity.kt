@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity ()
             writer.writeLineX("$PRE chains listen")
             while (true) {
                 val v = reader.readLineX()
-                val (n,chain) = Regex("(\\d+) (.*)").find(v)!!.destructured
+                val (n, _) = Regex("(\\d+) (.*)").find(v)!!.destructured
                 if (n.toInt() > 0) {
                     this.showNotification("New blocks:", v)
                 }
@@ -281,20 +281,9 @@ class MainActivity : AppCompatActivity ()
         ).show()
     }
 
-    fun fg_chain_get (chain: String, mode: String, block: String) {
-        val pay = this.fg {
-            main_cli_assert(arrayOf("chain", chain, "get", mode, block)).take(LEN1000_pay)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Block ${block.block2id()}:")
-            //.setView(msg)
-            .setMessage(pay)
-            .show()
-    }
-
     ////////////////////////////////////////
 
-    fun ids_add_ask (cb: ()->Unit) {
+    fun ids_add_ask () {
         val view = View.inflate(this, R.layout.frag_ids_add, null)
         AlertDialog.Builder(this)
             .setTitle("New identity:")
@@ -358,7 +347,7 @@ class MainActivity : AppCompatActivity ()
 
     ////////////////////////////////////////
 
-    fun cts_add_ask (cb: ()->Unit) {
+    fun cts_add_ask () {
         val view = View.inflate(this, R.layout.frag_cts_add, null)
         AlertDialog.Builder(this)
             .setTitle("New contact:")
