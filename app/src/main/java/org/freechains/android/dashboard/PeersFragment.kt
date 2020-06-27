@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.freechains.cli.main_cli
 import org.freechains.cli.main_cli_assert
+import org.freechains.common.listSplit
 import kotlin.concurrent.thread
 
 data class XPeer (
@@ -22,11 +23,15 @@ data class XPeer (
 class PeersFragment : Fragment ()
 {
     private val outer = this
-    private lateinit var main: MainActivity
-    private lateinit var data: List<XPeer>
+    private lateinit var main:   MainActivity
+    private lateinit var peers:  List<XPeer>
+    private lateinit var chains: List<String>
 
     fun bg_reload () {
         val ret = mutableListOf<XPeer>()
+        this.chains = this.main.fg {
+            main_cli_assert(arrayOf("chains", "list")).listSplit()
+        }
         this.main.bg (
             {
                 this.main.boot.peers
@@ -44,7 +49,7 @@ class PeersFragment : Fragment ()
                     .map { it.join() }
             },
             {
-                this.data = ret
+                this.peers = ret
                 this.adapter.notifyDataSetChanged()
             }
         )
@@ -52,7 +57,7 @@ class PeersFragment : Fragment ()
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.data = emptyList()
+        this.peers = emptyList()
         this.bg_reload()
 
         inflater.inflate(R.layout.frag_peers, container, false).let { view ->
@@ -112,7 +117,7 @@ class PeersFragment : Fragment ()
             return true
         }
         override fun getChild (i: Int, j: Int): Any? {
-            return outer.data[i].chains[j]
+            return outer.peers[i].chains[j]
         }
         override fun getChildId (i: Int, j: Int): Long {
             return i*10+j.toLong()
@@ -120,11 +125,11 @@ class PeersFragment : Fragment ()
         override fun getChildView (i: Int, j: Int, isLast: Boolean,
                                    convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_peers_chain,null)
-            val chain = outer.data[i].chains[j]
+            val chain = outer.peers[i].chains[j]
             view.findViewById<TextView>(R.id.chain).text = chain.chain2id()
-            if (!LOCAL.read { it.chains.any { it.name == outer.data[i].chains[j] } }) {
+            if (!LOCAL.read { it.chains.any { it.name == outer.peers[i].chains[j] } }) {
                 view.findViewById<ImageButton>(R.id.add).let {
-                    it.visibility = View.VISIBLE
+                    it.visibility = if (outer.chains.contains(chain)) View.INVISIBLE else View.VISIBLE
                     it.setOnClickListener {
                         if (chain.startsWith('$')) {
                             outer.main.chains_join_ask(chain) {
@@ -132,6 +137,7 @@ class PeersFragment : Fragment ()
                             }
                         } else {
                             outer.main.fg_chain_join(chain)
+                            outer.bg_reload()
                         }
                     }
                 }
@@ -139,22 +145,22 @@ class PeersFragment : Fragment ()
             return view
         }
         override fun getChildrenCount (i: Int): Int {
-            return outer.data[i].chains.size
+            return outer.peers[i].chains.size
         }
         override fun getGroupCount(): Int {
-            return outer.data.size
+            return outer.peers.size
         }
         override fun getGroup (i: Int): Any {
-            return outer.data[i]
+            return outer.peers[i]
         }
         override fun getGroupId (i: Int): Long {
             return i.toLong()
         }
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_peers_host,null)
-            view.findViewById<TextView>(R.id.ping).text = outer.data[i].ping
-            view.findViewById<TextView>(R.id.host).text = outer.data[i].name
-            view.tag = outer.data[i].name
+            view.findViewById<TextView>(R.id.ping).text = outer.peers[i].ping
+            view.findViewById<TextView>(R.id.host).text = outer.peers[i].name
+            view.tag = outer.peers[i].name
             return view
         }
     }
