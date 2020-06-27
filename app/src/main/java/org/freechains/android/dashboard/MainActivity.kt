@@ -347,6 +347,20 @@ class MainActivity : AppCompatActivity ()
 
     ////////////////////////////////////////
 
+    fun rem_ask (pre: String, cur: String, act: ()->Unit) {
+        AlertDialog.Builder(this)
+            .setTitle("Remove $pre $cur?")
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setPositiveButton(android.R.string.yes, { _, _ ->
+                act()
+                Toast.makeText(
+                    this.applicationContext,
+                    "Removed $pre $cur.", Toast.LENGTH_LONG
+                ).show()
+            })
+            .setNegativeButton(android.R.string.no, null).show()
+    }
+
     fun cts_add_ask () {
         val view = View.inflate(this, R.layout.frag_cts_add, null)
         AlertDialog.Builder(this)

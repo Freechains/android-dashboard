@@ -24,7 +24,7 @@ class ChainsFragment : Fragment ()
     private lateinit var main: MainActivity
     private lateinit var data: List<XChain>
 
-    fun reload () {
+    fun fg_reload () {
         this.data = this.main.fg {
             main_cli_assert(arrayOf("chains", "list"))
                 .listSplit()
@@ -40,7 +40,7 @@ class ChainsFragment : Fragment ()
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.reload()
+        this.fg_reload()
 
         inflater.inflate(R.layout.frag_chains, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
@@ -48,22 +48,14 @@ class ChainsFragment : Fragment ()
                 it.setOnItemLongClickListener { _,view,_,_ ->
                     if (view is LinearLayout && view.tag is String) {
                         val chain = view.tag.toString()
-                        AlertDialog.Builder(this.main)
-                            .setTitle("Leave $chain?")
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .setPositiveButton(android.R.string.yes, { _, _ ->
-                                Toast.makeText(
-                                    this.main.applicationContext,
-                                    "Left chain ${chain.chain2id()}.", Toast.LENGTH_LONG
-                                ).show()
-                                this.main.bg({
-                                    main_cli(arrayOf("chain", BOOT, "post", "inline", "chains rem $chain"))
-                                    Thread.sleep(1000)  // TODO: wait bootstrap reaction
-                                }, {
-                                    this.reload()
-                                })
-                            })
-                            .setNegativeButton(android.R.string.no, null).show()
+                        this.main.rem_ask("chain", chain) {
+                            this.main.fg {
+                                main_cli(arrayOf("chain", BOOT, "post", "inline", "chains rem $chain"))
+                                this.main.runOnUiThread {
+                                    this.fg_reload()
+                                }
+                            }
+                        }
                         true
                     } else {
                         false
@@ -73,7 +65,7 @@ class ChainsFragment : Fragment ()
             view.findViewById<FloatingActionButton>(R.id.but_join).let {
                 it.setOnClickListener {
                     this.main.chains_join_ask() {
-                        this.reload()
+                        this.fg_reload()
                     }
                 }
             }

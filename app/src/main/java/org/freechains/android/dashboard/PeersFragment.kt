@@ -61,22 +61,14 @@ class PeersFragment : Fragment ()
                 it.setOnItemLongClickListener { _,view,_,_ ->
                     if (view is LinearLayout && view.tag is String) {
                         val peer = view.tag.toString()
-                        AlertDialog.Builder(this.main)
-                            .setTitle("Remove peer $peer?")
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .setPositiveButton(android.R.string.yes, { _, _ ->
-                                this.main.fg {
-                                    main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers rem $peer"))
-                                    this.main.runOnUiThread {
-                                        this.bg_reload()
-                                    }
+                        this.main.rem_ask("peer", peer) {
+                            this.main.fg {
+                                main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers rem $peer"))
+                                this.main.runOnUiThread {
+                                    this.bg_reload()
                                 }
-                                Toast.makeText(
-                                    this.main.applicationContext,
-                                    "Removed peer $peer.", Toast.LENGTH_LONG
-                                ).show()
-                            })
-                            .setNegativeButton(android.R.string.no, null).show()
+                            }
+                        }
                         true
                     } else {
                         false
