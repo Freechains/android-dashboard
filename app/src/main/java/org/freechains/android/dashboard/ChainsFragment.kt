@@ -51,10 +51,9 @@ class ChainsFragment : Fragment ()
                         this.main.rem_ask("chain", chain) {
                             this.main.fg {
                                 main_cli(arrayOf("chain", BOOT, "post", "inline", "chains rem $chain"))
-                                this.main.runOnUiThread {
-                                    this.fg_reload()
-                                }
+                                Thread.sleep(100)  // TODO: wait bootstrap reaction
                             }
+                            this.fg_reload()
                         }
                         true
                     } else {

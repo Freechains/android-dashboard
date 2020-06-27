@@ -273,6 +273,7 @@ class MainActivity : AppCompatActivity ()
                 " " + main_cli_assert(arrayOf("crypto", "shared", pass!!))
             }
             main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "chains add $chain" + key))
+            Thread.sleep(100)  // TODO: wait bootstrap reaction
         }
         Toast.makeText(
             this.applicationContext,

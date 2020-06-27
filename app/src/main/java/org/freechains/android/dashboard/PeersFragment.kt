@@ -69,10 +69,9 @@ class PeersFragment : Fragment ()
                         this.main.rem_ask("peer", peer) {
                             this.main.fg {
                                 main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers rem $peer"))
-                                this.main.runOnUiThread {
-                                    this.bg_reload()
-                                }
+                                Thread.sleep(100)  // TODO: wait bootstrap reaction
                             }
+                            this.bg_reload()
                         }
                         true
                     } else {
@@ -92,10 +91,9 @@ class PeersFragment : Fragment ()
                             val peer = input.text.toString()
                             this.main.fg {
                                 main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers add $peer"))
-                                this.main.runOnUiThread {
-                                    this.bg_reload()
-                                }
+                                Thread.sleep(100)  // TODO: wait bootstrap reaction
                             }
+                            this.bg_reload()
                             Toast.makeText(
                                     this.main.applicationContext,
                                     "Added peer $peer.",
