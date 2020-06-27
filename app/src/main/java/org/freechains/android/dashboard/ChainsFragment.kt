@@ -1,18 +1,16 @@
 package org.freechains.android.dashboard
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.BaseExpandableListAdapter
-import android.widget.ExpandableListView
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import org.freechains.cli.main_cli
 import org.freechains.cli.main_cli_assert
 import org.freechains.common.listSplit
-import kotlin.concurrent.thread
 
 data class XChain (
     val name   : String,
@@ -26,9 +24,8 @@ class ChainsFragment : Fragment ()
     private lateinit var main: MainActivity
     private lateinit var data: List<XChain>
 
-    override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        this.main = this.activity as MainActivity
-        this.data = freeze {
+    fun reload () {
+        this.data = this.main.fg {
             main_cli_assert(arrayOf("chains", "list"))
                 .listSplit()
                 .map { chain ->
@@ -38,14 +35,34 @@ class ChainsFragment : Fragment ()
                     XChain(chain, heads, blocks)
                 }
         }
+        this.adapter.notifyDataSetChanged()
+    }
+
+    override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        this.main = this.activity as MainActivity
+        this.reload()
 
         inflater.inflate(R.layout.frag_chains, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
                 it.setAdapter(this.adapter)
                 it.setOnItemLongClickListener { _,view,_,_ ->
                     if (view is LinearLayout && view.tag is String) {
-                        this.main.chains_leave_ask(view.tag.toString())
-                        TODO("callback to remove and reload")
+                        val chain = view.tag.toString()
+                        AlertDialog.Builder(this.main)
+                            .setTitle("Leave $chain?")
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setPositiveButton(android.R.string.yes, { _, _ ->
+                                Toast.makeText(
+                                    this.main.applicationContext,
+                                    "Left chain ${chain.chain2id()}.", Toast.LENGTH_LONG
+                                ).show()
+                                this.main.fg {
+                                    main_cli(arrayOf("chain", BOOT, "post", "inline", "chains rem $chain"))
+                                    Thread.sleep(1000)  // TODO: wait bootstrap reaction
+                                }
+                                this.reload()
+                            })
+                            .setNegativeButton(android.R.string.no, null).show()
                         true
                     } else {
                         false
@@ -54,8 +71,9 @@ class ChainsFragment : Fragment ()
             }
             view.findViewById<FloatingActionButton>(R.id.but_join).let {
                 it.setOnClickListener {
-                    this.main.chains_join_ask()
-                    TODO("callback to add")
+                    this.main.chains_join_ask() {
+                        this.reload()
+                    }
                 }
             }
             return view
@@ -83,11 +101,11 @@ class ChainsFragment : Fragment ()
             view.findViewById<TextView>(android.R.id.text1).text = block.block2id()
 
             view.setOnLongClickListener {
-                outer.main.chain_get(chain.name, "block", block)
+                outer.main.fg_chain_get(chain.name, "block", block)
                 true
             }
             view.setOnClickListener {
-                outer.main.chain_get(chain.name, "payload", block)
+                outer.main.fg_chain_get(chain.name, "payload", block)
             }
             return view
         }

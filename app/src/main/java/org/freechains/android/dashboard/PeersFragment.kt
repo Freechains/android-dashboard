@@ -1,6 +1,8 @@
 package org.freechains.android.dashboard
 
+import android.app.AlertDialog
 import android.os.Bundle
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,45 +10,70 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.freechains.cli.main_cli
+import org.freechains.cli.main_cli_assert
 import kotlin.concurrent.thread
 
 data class XPeer (
     val name   : String,
-    var ping   : String = "?",              // x
-    var chains : List<String> = emptyList() // x
+    var ping   : String = "?",
+    var chains : List<String> = emptyList()
 )
 
 class PeersFragment : Fragment ()
 {
     private val outer = this
-    lateinit private var main: MainActivity
-    lateinit private var data: List<XPeer>
+    private lateinit var main: MainActivity
+    private lateinit var data: List<XPeer>
 
-    //this.adapter.notifyDataSetChanged()
+    fun bg_reload () {
+        val ret = mutableListOf<XPeer>()
+        this.main.bg (
+            {
+                this.main.boot.peers
+                    .map {
+                        thread {
+                            val ms = main_cli(arrayOf("peer", it, "ping")).let {
+                                if (!it.first) "down" else it.second + "ms"
+                            }
+                            val chains = main_cli(arrayOf("peer", it, "chains")).let {
+                                if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
+                            }
+                            ret.add(XPeer(it, ms, chains))
+                        }
+                    }
+                    .map { it.join() }
+            },
+            {
+                this.data = ret
+                this.adapter.notifyDataSetChanged()
+            }
+        )
+    }
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.data = this.main.boot.peers
-            .map {
-                val (ms,chains) = freeze {
-                    val ms = main_cli(arrayOf("peer", it, "ping")).let {
-                        println("<<< $it")
-                        if (!it.first) "down" else it.second+"ms"
-                    }
-                    val chains = main_cli(arrayOf("peer", it, "chains")).let {
-                        if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
-                    }
-                    Pair(ms,chains)
-                }
-                XPeer(it, ms!!, chains!!)
-            }
+        this.data = emptyList()
+        this.bg_reload()
 
         inflater.inflate(R.layout.frag_peers, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
                 it.setAdapter(this.adapter)
                 it.setOnItemLongClickListener { _,view,_,_ ->
                     if (view is LinearLayout && view.tag is String) {
-                        this.main.peers_remove_ask(view.tag.toString())
+                        val peer = view.tag.toString()
+                        AlertDialog.Builder(this.main)
+                            .setTitle("Remove peer $peer?")
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setPositiveButton(android.R.string.yes, { _, _ ->
+                                this.main.fg {
+                                    main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers rem $peer"))
+                                }
+                                Toast.makeText(
+                                    this.main.applicationContext,
+                                    "Removed peer $peer.", Toast.LENGTH_LONG
+                                ).show()
+                            })
+                            .setNegativeButton(android.R.string.no, null).show()
                         true
                     } else {
                         false
@@ -55,9 +82,24 @@ class PeersFragment : Fragment ()
             }
             view.findViewById<FloatingActionButton>(R.id.but_add).let {
                 it.setOnClickListener {
-                    this.main.peers_add_ask {
-                        this.adapter.notifyDataSetChanged()
-                    }
+                    val input = EditText(this.main)
+                    input.inputType = InputType.TYPE_CLASS_TEXT
+                    AlertDialog.Builder(this.main)
+                        .setTitle("Add peer:")
+                        .setView(input)
+                        .setNegativeButton ("Cancel", null)
+                        .setPositiveButton("OK") { _,_ ->
+                            val peer = input.text.toString()
+                            this.main.fg {
+                                main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers add $peer"))
+                            }
+                            Toast.makeText(
+                                    this.main.applicationContext,
+                                    "Added peer $peer.",
+                                    Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        .show()
                 }
             }
             return view
@@ -87,9 +129,11 @@ class PeersFragment : Fragment ()
                     it.visibility = View.VISIBLE
                     it.setOnClickListener {
                         if (chain.startsWith('$')) {
-                            outer.main.chains_join_ask(chain)
+                            outer.main.chains_join_ask(chain) {
+                                outer.bg_reload()
+                            }
                         } else {
-                            outer.main.chains_join(chain)
+                            outer.main.fg_chain_join(chain)
                         }
                     }
                 }

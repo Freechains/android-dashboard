@@ -13,23 +13,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class CtsFragment : Fragment ()
 {
-    val outer = this
-    lateinit var main: MainActivity
-
+    private val outer = this
     private var data: List<Id> = LOCAL.read { it.cts }
-    private val cb = {
-        this.data = LOCAL.read { it.cts }
-        this.adapter.notifyDataSetChanged()
-    }
-
-    override fun onDestroyView() {
-        this.main.adapters.remove(this.cb)
-        super.onDestroyView()
-    }
+    private lateinit var main: MainActivity
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.main.adapters.add(this.cb)
         inflater.inflate(R.layout.frag_ids, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
                 it.setAdapter(this.adapter)

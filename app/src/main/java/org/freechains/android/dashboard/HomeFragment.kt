@@ -1,17 +1,24 @@
 package org.freechains.android.dashboard
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.findNavController
+import org.freechains.common.fsRoot
+import java.io.File
 
 
 class HomeFragment : Fragment ()
 {
+    private lateinit var main: MainActivity
+
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        this.main = this.activity as MainActivity
         inflater.inflate(R.layout.frag_home, container, false).let { view ->
             view.findViewById<ImageView>(R.id.but_chains).setOnClickListener { it ->
                 it.findNavController().navigate(R.id.nav_chains)
@@ -29,7 +36,21 @@ class HomeFragment : Fragment ()
                 (this.activity as MainActivity).peers_sync(true)
             }
             view.findViewById<ImageView>(R.id.but_reset).setOnClickListener { _ ->
-                (this.activity as MainActivity).host_recreate_ask()
+                AlertDialog.Builder(this.main)
+                    .setTitle("!!! Reset Freechains !!!")
+                    .setMessage("Delete all data?")
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setPositiveButton(android.R.string.yes, { _, _ ->
+                        File(fsRoot!!, "/").deleteRecursively()
+                        this.main.finishAffinity()
+                        this.main.setWaiting(true)
+                        Toast.makeText(
+                            this.main.applicationContext,
+                            "Please, restart Freechains...",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    })
+                    .setNegativeButton(android.R.string.no, null).show()
             }
             return view
         }

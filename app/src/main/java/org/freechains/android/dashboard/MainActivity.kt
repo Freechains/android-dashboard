@@ -10,7 +10,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.text.Html
-import android.text.InputType
 import android.text.SpannableStringBuilder
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
@@ -34,7 +33,6 @@ import org.freechains.cli.main_cli_assert
 import org.freechains.host.main_host
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import java.io.File
 import java.net.Socket
 import kotlin.concurrent.thread
 
@@ -66,24 +64,15 @@ const val T5m_sync    = 30*hour
 const val LEN1000_pay = 1000
 const val LEN10_shared = 10
 const val LEN20_pubpbt = 20
-const val BOOT = "\$bootstrap.7EA6E8E2DD5035AAD58AE761899D2150B9FB06F0C8ADC1B5FE817C4952AC06E6"
-
-fun <T> freeze (f: () -> T): T {
-    var ret: T? = null
-    thread {
-        ret = f()
-    }.join()
-    return ret!!
-}
+const val BOOT = "\$bootstrap"
 
 class MainActivity : AppCompatActivity ()
 {
-    var isActive = true
-    val adapters: MutableSet<()->Unit> = mutableSetOf()
     lateinit var boot: Boot_Chain
 
-    override fun onPause()  { super.onPause()  ; this.isActive=false }
-    override fun onResume() { super.onResume() ; this.isActive=true  }
+    //private var isActive = true
+    //override fun onPause()  { super.onPause()  ; this.isActive=false }
+    //override fun onResume() { super.onResume() ; this.isActive=true  }
 
     override fun onDestroy () {
         main_cli(arrayOf("host", "stop"))
@@ -107,32 +96,17 @@ class MainActivity : AppCompatActivity ()
         fsRoot = applicationContext.filesDir.toString()
         //File(fsRoot!!, "/").deleteRecursively() ; error("OK")
         LOCAL.load()
-        this.adapters.forEach { println("XXX") ; it() }
-        LOCAL.cbs.add {
-            this.runOnUiThread {
-                this.adapters.forEach { it() }
-            }
-        }
 
-        this.setWaiting(true)
+        this.fg {
+            // background start
+            thread { main_host(arrayOf("start","/data/")) }
+            Thread.sleep(500)
 
-        // background start
-        val wait = findViewById<View>(R.id.wait)
-        wait.visibility = View.VISIBLE
-        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-        thread {
-            main_host(arrayOf("start","/data/"))
-        }
-        Thread.sleep(500)
-
-        // bootstrap chain
-        freeze {
+            // bootstrap chain
             main_cli(arrayOf("chains", "join", BOOT, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
-            main_cli_assert(arrayOf("peer", "192.168.1.100", "recv", BOOT))
+            main_cli(arrayOf("peer", "192.168.1.100", "recv", BOOT))
+            this.boot = Boot_Chain(BOOT, PORT_8330) { _,_ -> Unit }
         }
-        this.boot = Boot_Chain(BOOT, PORT_8330)
-
-        this.setWaiting(false)
 
         // background listen
         thread {
@@ -152,6 +126,25 @@ class MainActivity : AppCompatActivity ()
 
     ////////////////////////////////////////
 
+    fun <T> fg (f: () -> T): T {
+        var ret: T? = null
+        thread {
+            ret = f()
+        }.join()
+        return ret!!
+    }
+
+    fun <T> bg (f: ()->T, g: (T)->Unit): Thread {
+        this.setWaiting(true)
+        return thread {
+            var ret: T = f()
+            this.runOnUiThread {
+                this.setWaiting(false)
+                g(ret)
+            }
+        }
+    }
+
     fun setWaiting (v: Boolean) {
         val wait = findViewById<View>(R.id.wait)
         if (v) {
@@ -166,7 +159,7 @@ class MainActivity : AppCompatActivity ()
         }
     }
 
-    fun showNotification (title: String, message: String) {
+    private fun showNotification (title: String, message: String) {
         val mNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel("FREECHAINS_CHANNEL_ID",
@@ -189,27 +182,7 @@ class MainActivity : AppCompatActivity ()
 
     ////////////////////////////////////////
 
-    fun host_recreate_ask () {
-        AlertDialog.Builder(this)
-            .setTitle("!!! Reset Freechains !!!")
-            .setMessage("Delete all data?")
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setPositiveButton(android.R.string.yes, { _, _ ->
-                File(fsRoot!!, "/").deleteRecursively()
-                this.finishAffinity()
-                this.setWaiting(true)
-                Toast.makeText(
-                    applicationContext,
-                    "Please, restart Freechains...",
-                    Toast.LENGTH_SHORT
-                ).show()
-            })
-            .setNegativeButton(android.R.string.no, null).show()
-    }
-
-    ////////////////////////////////////////
-
-    fun chains_join_ask (chain: String = "") {
+    fun chains_join_ask (chain: String = "", cb: () -> Unit) {
         val view = View.inflate(this, R.layout.frag_chains_join, null)
         view.findViewById<EditText>(R.id.edit_name).setText(chain)
         AlertDialog.Builder(this)
@@ -221,7 +194,8 @@ class MainActivity : AppCompatActivity ()
                 val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
                 val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
                 if (!name.startsWith('$') || (pass1.length>=LEN10_shared && pass1==pass2)) {
-                    chains_join(name,pass1)
+                    fg_chain_join(name,pass1)
+                    cb()
                 } else {
                     Toast.makeText(
                         applicationContext,
@@ -233,134 +207,33 @@ class MainActivity : AppCompatActivity ()
             .show()
     }
 
-    fun chains_join (chain: String, pass: String? = null) {
-        freeze {
+    fun fg_chain_join (chain: String, pass: String? = null) {
+        this.fg {
             val key = if (!chain.startsWith('$')) "" else {
                 " " + main_cli_assert(arrayOf("crypto", "shared", pass!!))
             }
             main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "chains add $chain" + key))
-            this.runOnUiThread {
-                this.peers_sync(true)
-                Toast.makeText(
-                    this.applicationContext,
-                    "Added chain ${chain.chain2id()}.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
         }
+        this.peers_sync(true)
+        Toast.makeText(
+            this.applicationContext,
+            "Added chain ${chain.chain2id()}.",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
-    fun chains_leave_ask (chain: String) {
+    fun fg_chain_get (chain: String, mode: String, block: String) {
+        val pay = this.fg {
+            main_cli_assert(arrayOf("chain", chain, "get", mode, block)).take(LEN1000_pay)
+        }
         AlertDialog.Builder(this)
-            .setTitle("Leave $chain?")
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setPositiveButton(android.R.string.yes, { _, _ ->
-                LOCAL.write(true) {
-                    it.chains = it.chains.filter { it.name != chain }
-                }
-                thread { main_cli(arrayOf("chains", "leave", chain)) }
-                Toast.makeText(
-                    this.applicationContext,
-                    "Left chain ${chain.chain2id()}.", Toast.LENGTH_LONG
-                ).show()
-            })
-            .setNegativeButton(android.R.string.no, null).show()
-    }
-
-    fun chain_get (chain: String, mode: String, block: String) {
-        thread {
-            val pay = main_cli_assert(arrayOf("chain", chain, "get", mode, block)).take(LEN1000_pay)
-            //val pay1 = pay0.replace("\\s+".toRegex(), " ")
-            this.runOnUiThread {
-                if (this.isActive) {
-                    //val msg = TextView(this)
-                    //msg.setTextViewHTML("<a href='xxx'><u>more</u></a)>") { println(it) }
-                    AlertDialog.Builder(this)
-                        .setTitle("Block ${block.block2id()}:")
-                        //.setView(msg)
-                        .setMessage(pay)
-                        .show()
-                }
-            }
-        }
-    }
-
-    ////////////////////////////////////////
-
-    fun bg_reloadPeer (host: String) : Wait {
-        val t = thread {
-            val ms = main_cli(arrayOf("peer", host, "ping")).let {
-                if (!it.first) "down" else it.second+"ms"
-            }
-            val chains = main_cli(arrayOf("peer", host, "chains")).let {
-                if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
-            }
-            LOCAL.write(false) {
-                it.peers
-                    .first { it.name==host }
-                    .let {
-                        it.ping   = ms
-                        it.chains = chains
-                    }
-            }
-        }
-        return { t.join() }
-    }
-
-    fun peers_add_ask (cb: ()->Unit) {
-        val input = EditText(this)
-        input.inputType = InputType.TYPE_CLASS_TEXT
-
-        AlertDialog.Builder(this)
-            .setTitle("Add peer:")
-            .setView(input)
-            .setNegativeButton ("Cancel", null)
-            .setPositiveButton("OK") { _,_ ->
-                val host = input.text.toString()
-                val ok = LOCAL.write_tst(true) {
-                    if (it.peers.none { it.name==host }) {
-                        it.peers += Peer(host)
-                        true
-                    } else {
-                        false
-                    }
-                }
-                val msg =
-                    if (ok) {
-                        thread {
-                            this.bg_reloadPeer(host)()
-                            this.runOnUiThread {
-                                this.peers_sync(true)
-                            }
-                        }
-                        "Added peer $host."
-                    } else {
-                        "Peer $host already exists."
-                    }
-                Toast.makeText(
-                    applicationContext,
-                    msg,
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            .setTitle("Block ${block.block2id()}:")
+            //.setView(msg)
+            .setMessage(pay)
             .show()
     }
 
-    fun peers_remove_ask (host: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Remove peer $host?")
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setPositiveButton(android.R.string.yes, { _, _ ->
-                LOCAL.write(true) {
-                    it.peers = it.peers.filter { it.name != host }
-                }
-                Toast.makeText(
-                    applicationContext,
-                    "Removed peer $host.", Toast.LENGTH_LONG
-                ).show()
-            })
-            .setNegativeButton(android.R.string.no, null).show()
-    }
+    ////////////////////////////////////////
 
     fun peers_sync (showProgress: Boolean) {
         val hosts  = LOCAL.read { it.peers  }
@@ -477,7 +350,7 @@ class MainActivity : AppCompatActivity ()
                         }
                         this.runOnUiThread {
                             val ret = if (ok) {
-                                this.chains_join("@" + LOCAL.read { it.ids.first { it.nick == nick }.pub })
+                                this.fg_chain_join("@" + LOCAL.read { it.ids.first { it.nick == nick }.pub })
                                 "Added identity $nick."
                             } else {
                                 "Identity already exists."
@@ -538,7 +411,7 @@ class MainActivity : AppCompatActivity ()
                 }
                 val ret =
                     if (ok) {
-                        this.chains_join("@" + pub)
+                        this.fg_chain_join("@" + pub)
                         "Added contact $nick."
                     } else {
                         "Contact already exists."

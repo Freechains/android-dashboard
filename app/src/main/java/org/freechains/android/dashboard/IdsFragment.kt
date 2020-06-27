@@ -13,23 +13,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class IdsFragment : Fragment ()
 {
-    val outer = this
-    lateinit var main: MainActivity
-
+    private val outer = this
+    private lateinit var main: MainActivity
     private var data: List<Id> = LOCAL.read { it.ids }
-    private val cb = {
-        this.data = LOCAL.read { it.ids }
-        this.adapter.notifyDataSetChanged()
-    }
-
-    override fun onDestroyView() {
-        this.main.adapters.remove(this.cb)
-        super.onDestroyView()
-    }
 
     override fun onCreateView (inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.main = this.activity as MainActivity
-        this.main.adapters.add(this.cb)
         inflater.inflate(R.layout.frag_ids, container, false).let { view ->
             view.findViewById<ExpandableListView>(R.id.list).let {
                 it.setAdapter(this.adapter)

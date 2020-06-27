@@ -19,14 +19,15 @@
         app:navGraph="@navigation/mobile_navigation" />
 
     <ProgressBar
-        android:id="@+id/wait"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        app:layout_constraintBottom_toTopOf="@+id/nav_view"
-        app:layout_constraintEnd_toEndOf="@+id/nav_host_fragment"
-        app:layout_constraintStart_toStartOf="@+id/nav_host_fragment"
-        app:layout_constraintTop_toTopOf="@+id/nav_host_fragment" />
+            android:id="@+id/wait"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            app:layout_constraintBottom_toTopOf="@+id/nav_view"
+            app:layout_constraintEnd_toEndOf="@+id/nav_host_fragment"
+            app:layout_constraintStart_toStartOf="@+id/nav_host_fragment"
+            app:layout_constraintTop_toTopOf="@+id/nav_host_fragment"
+            android:visibility="invisible"/>
 
     <ProgressBar
         android:id="@+id/progress"
