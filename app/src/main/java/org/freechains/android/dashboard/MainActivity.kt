@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity ()
         findViewById<ProgressBar>(R.id.progress).max = 0 // 0=ready
 
         //println(">>> VERSION = $VERSION")
-        fsRoot = applicationContext.filesDir.toString()
+        fsRoot = this.applicationContext.filesDir.toString()
         //File(fsRoot!!, "/").deleteRecursively() ; error("OK")
         LOCAL.load()
 
@@ -105,7 +105,67 @@ class MainActivity : AppCompatActivity ()
             // bootstrap chain
             main_cli(arrayOf("chains", "join", BOOT, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
             main_cli(arrayOf("peer", "192.168.1.100", "recv", BOOT))
-            this.boot = Boot_Chain(BOOT, PORT_8330) { _,_ -> Unit }
+
+            var recvs = mutableMapOf<String,Int>()
+            var syncs = 0
+            val progress = findViewById<ProgressBar>(R.id.progress)
+
+            this.boot = Boot_Chain(BOOT, PORT_8330,
+                { tot ->
+                    this.runOnUiThread {
+                        if (tot > 0) {
+                            if (progress.max == 0) {
+                                progress.visibility = View.VISIBLE
+                                Toast.makeText(
+                                    this.applicationContext,
+                                    //"Total steps: ${progress.max}",
+                                    "Synchronizing...",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            progress.max += tot
+                        }
+                    }
+                },
+                { chain, action, (ok,nn) ->
+                    this.runOnUiThread {
+                        progress.progress += 1
+                        if (!ok) return@runOnUiThread
+                        val (s1, _) = Regex("(\\d+) / (\\d+)").find(nn)!!.destructured
+                        val n1 = s1.toInt()
+                        syncs += n1
+                        if (n1 > 0) {
+                            if (action == "recv") {
+                                recvs[chain] = n1
+                            }
+                            Toast.makeText(
+                                this.applicationContext,
+                                "${chain}: $action $n1", Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                },
+                {
+                    this.runOnUiThread {
+                        if (progress.progress == progress.max) {
+                            recvs = mutableMapOf<String,Int>()
+                            syncs = 0
+                            progress.max = 0
+                            val news_str = recvs.toList()
+                                .map { "${it.second} ${it.first}" }
+                                .joinToString("\n")
+                            if (news_str.isNotEmpty()) {
+                                this.showNotification("New blocks:", news_str)
+                            }
+                            progress.visibility = View.INVISIBLE
+                            Toast.makeText(
+                                this.applicationContext,
+                                "Synchronized $syncs blocks.", Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            )
         }
 
         // background listen
@@ -168,13 +228,13 @@ class MainActivity : AppCompatActivity ()
             channel.description = "FREECHAINS_NOTIFICATION_CHANNEL_DESCRIPTION"
             mNotificationManager.createNotificationChannel(channel)
         }
-        val mBuilder = NotificationCompat.Builder(applicationContext, "FREECHAINS_CHANNEL_ID")
+        val mBuilder = NotificationCompat.Builder(this.applicationContext, "FREECHAINS_CHANNEL_ID")
             .setSmallIcon(R.drawable.ic_freechains_notify) // notification icon
             .setContentTitle(title) // title for notification
             .setContentText(message)// message for notification
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setAutoCancel(true) // clear notification after click
-        val intent = Intent(applicationContext, MainActivity::class.java)
+        val intent = Intent(this.applicationContext, MainActivity::class.java)
         val pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
         mBuilder.setContentIntent(pi)
         mNotificationManager.notify(0, mBuilder.build())
@@ -198,7 +258,7 @@ class MainActivity : AppCompatActivity ()
                     cb()
                 } else {
                     Toast.makeText(
-                        applicationContext,
+                        this.applicationContext,
                         "Invalid password.",
                         Toast.LENGTH_SHORT
                     ).show()
@@ -214,7 +274,6 @@ class MainActivity : AppCompatActivity ()
             }
             main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "chains add $chain" + key))
         }
-        this.peers_sync(true)
         Toast.makeText(
             this.applicationContext,
             "Added chain ${chain.chain2id()}.",
@@ -231,98 +290,6 @@ class MainActivity : AppCompatActivity ()
             //.setView(msg)
             .setMessage(pay)
             .show()
-    }
-
-    ////////////////////////////////////////
-
-    fun peers_sync (showProgress: Boolean) {
-        val hosts  = LOCAL.read { it.peers  }
-        val chains = LOCAL.read { it.chains }
-
-        val progress = findViewById<ProgressBar>(R.id.progress)
-        if (progress.max > 0) {
-            return  // already running
-        }
-        progress.max = hosts.map {
-            it.chains.count {
-                chains.any { chain ->
-                    chain.name == it
-                }
-            }
-        }.sum() * 2
-        if (progress.max == 0) {
-            return
-        }
-        if (showProgress) {
-            progress.visibility = View.VISIBLE
-        }
-
-        if (showProgress) {
-            Toast.makeText(
-                applicationContext,
-                //"Total steps: ${progress.max}",
-                "Synchronizing...",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-
-        var min = 0
-        var max = 0
-        val counts = mutableMapOf<String,Int>()
-
-        for (chain in chains) {
-            // parallalelize accross chains
-            synchronized (this) {
-                counts[chain.name] = 0
-            }
-            thread {
-                val hs = hosts.filter { it.chains.contains(chain.name) }
-                // but not inside each chain
-                for (h in hs) {
-                    fun f (dir: String, v: String) {
-                        println(v)
-                        val (v1,v2) = Regex("(\\d+) / (\\d+)").find(v)!!.destructured
-                        min += v1.toInt()
-                        max += v2.toInt()
-                        if (dir == "<-") {
-                            synchronized (this) {
-                                counts[chain.name] = counts[chain.name]!! + v1.toInt()
-                            }
-                        }
-                        this.runOnUiThread {
-                            progress.progress += 1
-                            if (showProgress && v1.toInt()>0) {
-                                Toast.makeText(
-                                    applicationContext,
-                                    "${chain.name}: $v1 $dir", Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-                    }
-                    f("->", main_cli_assert(arrayOf("peer",h.name,"send",chain.name)))
-                    f("<-", main_cli_assert(arrayOf("peer",h.name,"recv",chain.name)))
-                    this.runOnUiThread {
-                        if (progress.progress == progress.max) {
-                            val news = counts.toList().filter { it.second > 0 }
-                            val news_str = news
-                                .map { "${it.second} ${it.first}" }
-                                .joinToString("\n")
-                            if (news_str.isNotEmpty()) {
-                                this.showNotification("New blocks:", news_str)
-                            }
-                            if (showProgress) {
-                                progress.visibility = View.INVISIBLE
-                                Toast.makeText(
-                                    applicationContext,
-                                    "Synchronized $min blocks.", Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            progress.max = 0
-                        }
-                    }
-                }
-            }
-        }
     }
 
     ////////////////////////////////////////
@@ -356,7 +323,7 @@ class MainActivity : AppCompatActivity ()
                                 "Identity already exists."
                             }
                             Toast.makeText(
-                                applicationContext,
+                                this.applicationContext,
                                 ret,
                                 Toast.LENGTH_SHORT
                             ).show()
@@ -364,7 +331,7 @@ class MainActivity : AppCompatActivity ()
                     }
                 } else {
                     Toast.makeText(
-                        applicationContext,
+                        this.applicationContext,
                         "Invalid password.",
                         Toast.LENGTH_SHORT
                     ).show()
@@ -382,7 +349,7 @@ class MainActivity : AppCompatActivity ()
                     it.ids = it.ids.filter { it.nick != nick }
                 }
                 Toast.makeText(
-                    applicationContext,
+                    this.applicationContext,
                     "Removed identity $nick.", Toast.LENGTH_LONG
                 ).show()
             })
@@ -417,7 +384,7 @@ class MainActivity : AppCompatActivity ()
                         "Contact already exists."
                     }
                 Toast.makeText(
-                    applicationContext,
+                    this.applicationContext,
                     ret,
                     Toast.LENGTH_SHORT
                 ).show()
@@ -434,7 +401,7 @@ class MainActivity : AppCompatActivity ()
                     it.cts = it.cts.filter { it.nick != nick }
                 }
                 Toast.makeText(
-                    applicationContext,
+                    this.applicationContext,
                     "Removed contact $nick.", Toast.LENGTH_LONG
                 ).show()
             })

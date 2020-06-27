@@ -56,11 +56,12 @@ class ChainsFragment : Fragment ()
                                     this.main.applicationContext,
                                     "Left chain ${chain.chain2id()}.", Toast.LENGTH_LONG
                                 ).show()
-                                this.main.fg {
+                                this.main.bg({
                                     main_cli(arrayOf("chain", BOOT, "post", "inline", "chains rem $chain"))
                                     Thread.sleep(1000)  // TODO: wait bootstrap reaction
-                                }
-                                this.reload()
+                                }, {
+                                    this.reload()
+                                })
                             })
                             .setNegativeButton(android.R.string.no, null).show()
                         true

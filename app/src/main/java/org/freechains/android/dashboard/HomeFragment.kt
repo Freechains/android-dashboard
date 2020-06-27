@@ -33,7 +33,7 @@ class HomeFragment : Fragment ()
                 it.findNavController().navigate(R.id.nav_contacts)
             }
             view.findViewById<ImageView>(R.id.but_sync).setOnClickListener {
-                (this.activity as MainActivity).peers_sync(true)
+                TODO("sync what?")
             }
             view.findViewById<ImageView>(R.id.but_reset).setOnClickListener { _ ->
                 AlertDialog.Builder(this.main)

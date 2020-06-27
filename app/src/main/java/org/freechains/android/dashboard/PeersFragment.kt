@@ -67,6 +67,9 @@ class PeersFragment : Fragment ()
                             .setPositiveButton(android.R.string.yes, { _, _ ->
                                 this.main.fg {
                                     main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers rem $peer"))
+                                    this.main.runOnUiThread {
+                                        this.bg_reload()
+                                    }
                                 }
                                 Toast.makeText(
                                     this.main.applicationContext,
@@ -92,6 +95,9 @@ class PeersFragment : Fragment ()
                             val peer = input.text.toString()
                             this.main.fg {
                                 main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers add $peer"))
+                                this.main.runOnUiThread {
+                                    this.bg_reload()
+                                }
                             }
                             Toast.makeText(
                                     this.main.applicationContext,
