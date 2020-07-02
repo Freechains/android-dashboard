@@ -45,11 +45,7 @@ class HomeFragment : Fragment ()
                         File(fsRoot!!, "/").deleteRecursively()
                         this.main.finishAffinity()
                         this.main.setWaiting(true)
-                        Toast.makeText(
-                            this.main.applicationContext,
-                            "Please, restart Freechains...",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        this.main.showToast("Please, restart Freechains...")
                     })
                     .setNegativeButton(android.R.string.no, null).show()
             }

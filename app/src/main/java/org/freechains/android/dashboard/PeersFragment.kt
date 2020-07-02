@@ -88,11 +88,7 @@ class PeersFragment : Fragment ()
                                 this.main.store.store("peers", peer, "ADD")
                             }
                             this.bg_reload()
-                            Toast.makeText(
-                                    this.main.applicationContext,
-                                    "Added peer $peer.",
-                                    Toast.LENGTH_SHORT
-                            ).show()
+                            this.main.showToast("Added peer $peer.")
                         }
                         .show()
                 }

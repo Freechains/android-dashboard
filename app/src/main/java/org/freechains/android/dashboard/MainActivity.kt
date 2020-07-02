@@ -37,6 +37,8 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.net.Socket
+import java.util.*
+import kotlin.collections.ArrayDeque
 import kotlin.concurrent.thread
 
 fun makeLinkClickable (strBuilder: SpannableStringBuilder, span: URLSpan, cb: (String)->Unit) {
@@ -122,22 +124,15 @@ class MainActivity : AppCompatActivity ()
                     if (tot > 0) {
                         if (progress.max == 0) {
                             progress.visibility = View.VISIBLE
-                            Toast.makeText(
-                                this.applicationContext,
-                                //"Total steps: ${progress.max}",
-                                "Synchronizing...",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            this.showToast("Synchronizing...")
                         }
                         progress.max += tot
                     }
                 }
             },
             { chain, action, (ok,nn) ->
-                //println("FORA $nn")
                 this.runOnUiThread {
                     progress.progress += 1
-                    //println("DENTRO $nn")
                     if (!ok) return@runOnUiThread
                     val (s1, _) = Regex("(\\d+) / (\\d+)").find(nn)!!.destructured
                     val n1 = s1.toInt()
@@ -146,13 +141,9 @@ class MainActivity : AppCompatActivity ()
                         if (action == "recv") {
                             recvs[chain] = n1
                         }
-                        Toast.makeText(
-                            this.applicationContext,
-                            "${chain}: $action $n1", Toast.LENGTH_LONG
-                        ).show()
+                        this.showToast("${chain}: $action $n1")
                     }
                 }
-                //println("FIM $nn")
             },
             {
                 this.runOnUiThread {
@@ -164,10 +155,8 @@ class MainActivity : AppCompatActivity ()
                         if (news_str.isNotEmpty()) {
                             this.showNotification("New blocks:", news_str)
                         }
-                        Toast.makeText(
-                            this.applicationContext,
-                            "Synchronized $syncs blocks.", Toast.LENGTH_LONG
-                        ).show()
+                        println("SYNC $syncs")
+                        this.showToast("Synchronized $syncs blocks.")
                         progress.visibility = View.INVISIBLE
                         recvs = mutableMapOf<String,Int>()
                         syncs = 0
@@ -235,6 +224,29 @@ class MainActivity : AppCompatActivity ()
         mNotificationManager.notify(0, mBuilder.build())
     }
 
+    private val queue = mutableListOf<String>()
+    fun showToast (s: String) {
+        this.queue.add(s)
+        if (this.queue.size == 1) {
+            this.nextToast()
+        }
+    }
+    private fun nextToast () {
+        if (this.queue.isEmpty()) {
+            return
+        }
+        val s = this.queue.elementAt(0)
+        Toast.makeText(this.applicationContext,s,Toast.LENGTH_SHORT).show()
+        //println(">>> $s")
+        thread {
+            Thread.sleep(500)
+            this.runOnUiThread {
+                this.queue.removeAt(0)
+                this.nextToast()
+            }
+        }
+    }
+
     ////////////////////////////////////////
 
     fun chains_join_ask (chain: String = "", cb: () -> Unit) {
@@ -252,11 +264,7 @@ class MainActivity : AppCompatActivity ()
                     fg_chain_join(name,pass1)
                     cb()
                 } else {
-                    Toast.makeText(
-                        this.applicationContext,
-                        "Invalid password.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    this.showToast("Invalid password.")
                 }
             }
             .show()
@@ -269,11 +277,7 @@ class MainActivity : AppCompatActivity ()
             }
             this.store.store("chains", chain, key)
         }
-        Toast.makeText(
-            this.applicationContext,
-            "Added chain ${chain.chain2id()}.",
-            Toast.LENGTH_SHORT
-        ).show()
+        this.showToast("Added chain ${chain.chain2id()}.")
     }
 
     ////////////////////////////////////////
@@ -306,19 +310,11 @@ class MainActivity : AppCompatActivity ()
                             } else {
                                 "Identity already exists."
                             }
-                            Toast.makeText(
-                                this.applicationContext,
-                                ret,
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            this.showToast(ret)
                         }
                     }
                 } else {
-                    Toast.makeText(
-                        this.applicationContext,
-                        "Invalid password.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    this.showToast("Invalid password.")
                 }
             }
             .show()
@@ -332,10 +328,7 @@ class MainActivity : AppCompatActivity ()
                 LOCAL.write(true) {
                     it.ids = it.ids.filter { it.nick != nick }
                 }
-                Toast.makeText(
-                    this.applicationContext,
-                    "Removed identity $nick.", Toast.LENGTH_LONG
-                ).show()
+                this.showToast("Removed identity $nick.")
             })
             .setNegativeButton(android.R.string.no, null).show()
     }
@@ -348,10 +341,7 @@ class MainActivity : AppCompatActivity ()
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setPositiveButton(android.R.string.yes, { _, _ ->
                 act()
-                Toast.makeText(
-                    this.applicationContext,
-                    "Removed $pre $cur.", Toast.LENGTH_LONG
-                ).show()
+                this.showToast("Removed $pre $cur.")
             })
             .setNegativeButton(android.R.string.no, null).show()
     }
@@ -381,11 +371,7 @@ class MainActivity : AppCompatActivity ()
                     } else {
                         "Contact already exists."
                     }
-                Toast.makeText(
-                    this.applicationContext,
-                    ret,
-                    Toast.LENGTH_SHORT
-                ).show()
+                this.showToast(ret)
             }
             .show()
     }
@@ -398,10 +384,7 @@ class MainActivity : AppCompatActivity ()
                 LOCAL.write(true) {
                     it.cts = it.cts.filter { it.nick != nick }
                 }
-                Toast.makeText(
-                    this.applicationContext,
-                    "Removed contact $nick.", Toast.LENGTH_LONG
-                ).show()
+                this.showToast("Removed contact $nick.")
             })
             .setNegativeButton(android.R.string.no, null).show()
     }
