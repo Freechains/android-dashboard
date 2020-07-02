@@ -26,8 +26,7 @@ class ChainsFragment : Fragment ()
 
     fun fg_reload () {
         this.data = this.main.fg {
-            main_cli_assert(arrayOf("chains", "list"))
-                .listSplit()
+            this.main.store.getKeys("chains")
                 .map { chain ->
                     val heads= main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
                     val gen= main_cli_assert(arrayOf("chain", chain, "genesis"))
@@ -50,8 +49,7 @@ class ChainsFragment : Fragment ()
                         val chain = view.tag.toString()
                         this.main.rem_ask("chain", chain) {
                             this.main.fg {
-                                main_cli(arrayOf("chain", BOOT, "post", "inline", "chains rem $chain"))
-                                Thread.sleep(100)  // TODO: wait bootstrap reaction
+                                this.main.store.store("chains", chain, "REM")
                             }
                             this.fg_reload()
                         }

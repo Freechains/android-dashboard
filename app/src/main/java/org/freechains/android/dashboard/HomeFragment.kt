@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.findNavController
 import org.freechains.common.fsRoot
 import java.io.File
+import kotlin.concurrent.thread
 
 
 class HomeFragment : Fragment ()
@@ -33,7 +34,7 @@ class HomeFragment : Fragment ()
                 it.findNavController().navigate(R.id.nav_contacts)
             }
             view.findViewById<ImageView>(R.id.but_sync).setOnClickListener {
-                TODO("sync what?")
+                thread { this.main.sync.sync_all() }
             }
             view.findViewById<ImageView>(R.id.but_reset).setOnClickListener { _ ->
                 AlertDialog.Builder(this.main)

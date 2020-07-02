@@ -27,12 +27,15 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import org.freechains.bootstrap.Chain as Boot_Chain
 import org.freechains.cli.main_cli
 import org.freechains.cli.main_cli_assert
 import org.freechains.host.main_host
+import org.freechains.store.Store
+import org.freechains.sync.CBs
+import org.freechains.sync.Sync
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.File
 import java.net.Socket
 import kotlin.concurrent.thread
 
@@ -64,11 +67,12 @@ const val T5m_sync    = 30*hour
 const val LEN1000_pay = 1000
 const val LEN10_shared = 10
 const val LEN20_pubpbt = 20
-const val BOOT = "\$bootstrap"
+const val SYNC = "\$sync"
 
 class MainActivity : AppCompatActivity ()
 {
-    lateinit var boot: Boot_Chain
+    lateinit var store: Store
+    lateinit var sync:  Sync
 
     //private var isActive = true
     //override fun onPause()  { super.onPause()  ; this.isActive=false }
@@ -97,91 +101,82 @@ class MainActivity : AppCompatActivity ()
         //File(fsRoot!!, "/").deleteRecursively() ; error("OK")
         LOCAL.load()
 
-        this.fg {
-            // background start
-            thread { main_host(arrayOf("start","/data/")) }
-            Thread.sleep(500)
+        // background start
+        thread { main_host(arrayOf("start","/data/")) }
+        Thread.sleep(500)
 
-            // bootstrap chain
-            main_cli(arrayOf("chains", "join", BOOT, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
-            main_cli(arrayOf("peer", "192.168.1.100", "recv", BOOT))
+        // bootstrap chain
+        main_cli(arrayOf("chains", "join", SYNC, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
+        //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
 
-            var recvs = mutableMapOf<String,Int>()
-            var syncs = 0
-            val progress = findViewById<ProgressBar>(R.id.progress)
+        var recvs = mutableMapOf<String,Int>()
+        var syncs = 0
+        val progress = findViewById<ProgressBar>(R.id.progress)
 
-            this.boot = Boot_Chain(BOOT, PORT_8330,
-                { tot ->
-                    this.runOnUiThread {
-                        if (tot > 0) {
-                            if (progress.max == 0) {
-                                progress.visibility = View.VISIBLE
-                                Toast.makeText(
-                                    this.applicationContext,
-                                    //"Total steps: ${progress.max}",
-                                    "Synchronizing...",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            progress.max += tot
-                        }
-                    }
-                },
-                { chain, action, (ok,nn) ->
-                    this.runOnUiThread {
-                        progress.progress += 1
-                        if (!ok) return@runOnUiThread
-                        val (s1, _) = Regex("(\\d+) / (\\d+)").find(nn)!!.destructured
-                        val n1 = s1.toInt()
-                        syncs += n1
-                        if (n1 > 0) {
-                            if (action == "recv") {
-                                recvs[chain] = n1
-                            }
+        this.store = Store(SYNC, PORT_8330) ; Thread.sleep(500) // wait first update
+        this.sync  = Sync(this.store, CBs(
+            { tot ->
+                //println("+++ max $tot")
+                this.runOnUiThread {
+                    //println("+++ todo $tot")
+                    if (tot > 0) {
+                        if (progress.max == 0) {
+                            progress.visibility = View.VISIBLE
                             Toast.makeText(
                                 this.applicationContext,
-                                "${chain}: $action $n1", Toast.LENGTH_LONG
+                                //"Total steps: ${progress.max}",
+                                "Synchronizing...",
+                                Toast.LENGTH_LONG
                             ).show()
                         }
-                    }
-                },
-                {
-                    this.runOnUiThread {
-                        if (progress.progress == progress.max) {
-                            recvs = mutableMapOf<String,Int>()
-                            syncs = 0
-                            progress.max = 0
-                            val news_str = recvs.toList()
-                                .map { "${it.second} ${it.first}" }
-                                .joinToString("\n")
-                            if (news_str.isNotEmpty()) {
-                                this.showNotification("New blocks:", news_str)
-                            }
-                            progress.visibility = View.INVISIBLE
-                            Toast.makeText(
-                                this.applicationContext,
-                                "Synchronized $syncs blocks.", Toast.LENGTH_LONG
-                            ).show()
-                        }
+                        progress.max += tot
                     }
                 }
-            )
-        }
-
-        // background listen
-        thread {
-            val socket = Socket("localhost", PORT_8330)
-            val writer = DataOutputStream(socket.getOutputStream()!!)
-            val reader = DataInputStream(socket.getInputStream()!!)
-            writer.writeLineX("$PRE chains listen")
-            while (true) {
-                val v = reader.readLineX()
-                val (n, _) = Regex("(\\d+) (.*)").find(v)!!.destructured
-                if (n.toInt() > 0) {
-                    this.showNotification("New blocks:", v)
+            },
+            { chain, action, (ok,nn) ->
+                //println("FORA $nn")
+                this.runOnUiThread {
+                    progress.progress += 1
+                    //println("DENTRO $nn")
+                    if (!ok) return@runOnUiThread
+                    val (s1, _) = Regex("(\\d+) / (\\d+)").find(nn)!!.destructured
+                    val n1 = s1.toInt()
+                    syncs += n1
+                    if (n1 > 0) {
+                        if (action == "recv") {
+                            recvs[chain] = n1
+                        }
+                        Toast.makeText(
+                            this.applicationContext,
+                            "${chain}: $action $n1", Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                //println("FIM $nn")
+            },
+            {
+                this.runOnUiThread {
+                    if (progress.progress == progress.max) {
+                        //println("+++ done ${progress.max}")
+                        val news_str = recvs.toList()
+                            .map { "${it.second} ${it.first}" }
+                            .joinToString("\n")
+                        if (news_str.isNotEmpty()) {
+                            this.showNotification("New blocks:", news_str)
+                        }
+                        Toast.makeText(
+                            this.applicationContext,
+                            "Synchronized $syncs blocks.", Toast.LENGTH_LONG
+                        ).show()
+                        progress.visibility = View.INVISIBLE
+                        recvs = mutableMapOf<String,Int>()
+                        syncs = 0
+                        progress.max = 0
+                        progress.progress = 0
+                    }
                 }
             }
-        }
+        ))
     }
 
     ////////////////////////////////////////
@@ -269,11 +264,10 @@ class MainActivity : AppCompatActivity ()
 
     fun fg_chain_join (chain: String, pass: String? = null) {
         this.fg {
-            val key = if (!chain.startsWith('$')) "" else {
-                " " + main_cli_assert(arrayOf("crypto", "shared", pass!!))
+            val key = if (!chain.startsWith('$')) "ADD" else {
+                main_cli_assert(arrayOf("crypto", "shared", pass!!))
             }
-            main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "chains add $chain" + key))
-            Thread.sleep(100)  // TODO: wait bootstrap reaction
+            this.store.store("chains", chain, key)
         }
         Toast.makeText(
             this.applicationContext,

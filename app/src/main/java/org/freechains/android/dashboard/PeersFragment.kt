@@ -25,16 +25,12 @@ class PeersFragment : Fragment ()
     private val outer = this
     private lateinit var main:   MainActivity
     private lateinit var peers:  List<XPeer>
-    private lateinit var chains: List<String>
 
     fun bg_reload () {
         val ret = mutableListOf<XPeer>()
-        this.chains = this.main.fg {
-            main_cli_assert(arrayOf("chains", "list")).listSplit()
-        }
         this.main.bg (
             {
-                this.main.boot.peers
+                this.main.store.getKeys("peers")
                     .map {
                         thread {
                             val ms = main_cli(arrayOf("peer", it, "ping")).let {
@@ -68,8 +64,7 @@ class PeersFragment : Fragment ()
                         val peer = view.tag.toString()
                         this.main.rem_ask("peer", peer) {
                             this.main.fg {
-                                main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers rem $peer"))
-                                Thread.sleep(100)  // TODO: wait bootstrap reaction
+                                this.main.store.store("peers", peer, "REM")
                             }
                             this.bg_reload()
                         }
@@ -90,8 +85,7 @@ class PeersFragment : Fragment ()
                         .setPositiveButton("OK") { _,_ ->
                             val peer = input.text.toString()
                             this.main.fg {
-                                main_cli_assert(arrayOf("chain", BOOT, "post", "inline", "peers add $peer"))
-                                Thread.sleep(100)  // TODO: wait bootstrap reaction
+                                this.main.store.store("peers", peer, "ADD")
                             }
                             this.bg_reload()
                             Toast.makeText(
@@ -127,7 +121,7 @@ class PeersFragment : Fragment ()
             view.findViewById<TextView>(R.id.chain).text = chain.chain2id()
             if (!LOCAL.read { it.chains.any { it.name == outer.peers[i].chains[j] } }) {
                 view.findViewById<ImageButton>(R.id.add).let {
-                    it.visibility = if (outer.chains.contains(chain)) View.INVISIBLE else View.VISIBLE
+                    it.visibility = if (outer.main.store.getKeys("chains").contains(chain)) View.INVISIBLE else View.VISIBLE
                     it.setOnClickListener {
                         if (chain.startsWith('$')) {
                             outer.main.chains_join_ask(chain) {
