@@ -98,7 +98,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:minHeight="?attr/listPreferredItemHeight"
-                android:text="Indentity"
+                android:text="Identity"
                 android:textSize="24sp" />
 
             <TextView

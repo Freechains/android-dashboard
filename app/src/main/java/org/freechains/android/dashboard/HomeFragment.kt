@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -44,7 +45,11 @@ class HomeFragment : Fragment ()
                     .setPositiveButton(android.R.string.yes, { _, _ ->
                         File(fsRoot!!, "/").deleteRecursively()
                         this.main.finishAffinity()
-                        this.main.setWaiting(true)
+                        this.main.findViewById<View>(R.id.wait).visibility = View.VISIBLE
+                        this.main.getWindow().setFlags (
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        );
                         this.main.showToast("Please, restart Freechains...")
                     })
                     .setNegativeButton(android.R.string.no, null).show()

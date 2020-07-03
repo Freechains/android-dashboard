@@ -68,7 +68,7 @@ fun TextView.setTextViewHTML (html: String, cb: (String)->Unit) {
 const val T5m_sync    = 30*hour
 const val LEN1000_pay = 1000
 const val LEN10_shared = 10
-const val LEN20_pubpbt = 20
+const val LEN20_pubpbt = 1  // TODO 20
 const val SYNC = "\$sync"
 
 class MainActivity : AppCompatActivity ()
@@ -189,20 +189,6 @@ class MainActivity : AppCompatActivity ()
         }
     }
 
-    fun setWaiting (v: Boolean) {
-        val wait = findViewById<View>(R.id.wait)
-        if (v) {
-            wait.visibility = View.VISIBLE
-            this.getWindow().setFlags (
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            );
-        } else {
-            wait.visibility = View.INVISIBLE
-            this.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-        }
-    }
-
     private fun showNotification (title: String, message: String) {
         val mNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -239,7 +225,7 @@ class MainActivity : AppCompatActivity ()
         Toast.makeText(this.applicationContext,s,Toast.LENGTH_SHORT).show()
         //println(">>> $s")
         thread {
-            Thread.sleep(500)
+            Thread.sleep(1000)
             this.runOnUiThread {
                 this.queue.removeAt(0)
                 this.nextToast()
@@ -281,57 +267,6 @@ class MainActivity : AppCompatActivity ()
     }
 
     ////////////////////////////////////////
-
-    fun ids_add_ask () {
-        val view = View.inflate(this, R.layout.frag_ids_add, null)
-        AlertDialog.Builder(this)
-            .setTitle("New identity:")
-            .setView(view)
-            .setNegativeButton ("Cancel", null)
-            .setPositiveButton("OK") { _,_ ->
-                val nick  = view.findViewById<EditText>(R.id.edit_nick).text.toString()
-                val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
-                val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
-                if (pass1.length>=LEN20_pubpbt && pass1==pass2) {
-                    thread {
-                        val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass1)).split(' ')[0]
-                        var ok = LOCAL.write(true) {
-                            if (it.ids.none { it.nick==nick || it.pub==pub }) {
-                                it.ids += Id(nick, pub)
-                                true
-                            } else {
-                                false
-                            }
-                        }
-                        this.runOnUiThread {
-                            val ret = if (ok) {
-                                this.fg_chain_join("@" + LOCAL.read { it.ids.first { it.nick == nick }.pub })
-                                "Added identity $nick."
-                            } else {
-                                "Identity already exists."
-                            }
-                            this.showToast(ret)
-                        }
-                    }
-                } else {
-                    this.showToast("Invalid password.")
-                }
-            }
-            .show()
-    }
-
-    fun ids_remove_ask (nick: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Remove identity $nick?")
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setPositiveButton(android.R.string.yes, { _, _ ->
-                LOCAL.write(true) {
-                    it.ids = it.ids.filter { it.nick != nick }
-                }
-                this.showToast("Removed identity $nick.")
-            })
-            .setNegativeButton(android.R.string.no, null).show()
-    }
 
     ////////////////////////////////////////
 
