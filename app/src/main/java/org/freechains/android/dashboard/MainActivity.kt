@@ -66,8 +66,10 @@ class MainActivity : AppCompatActivity ()
         Thread.sleep(500)
 
         // sync chain
-        main_cli(arrayOf("chains", "join", SYNC, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
-        //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
+        this.fg {
+            main_cli(arrayOf("chains", "join", SYNC, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
+            //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
+        }
 
         var recvs = mutableMapOf<String,Int>()
         var syncs = 0
