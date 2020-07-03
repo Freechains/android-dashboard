@@ -8,11 +8,10 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import org.freechains.cli.main_cli
 import org.freechains.cli.main_cli_assert
 import org.freechains.common.listSplit
 
-data class XChain (
+data class Chain (
     val name   : String,
     val heads  : List<String>,
     val blocks : List<String>
@@ -22,7 +21,7 @@ class ChainsFragment : Fragment ()
 {
     private val outer = this
     private lateinit var main: MainActivity
-    private lateinit var data: List<XChain>
+    private lateinit var data: List<Chain>
 
     fun fg_reload () {
         this.data = this.main.fg {
@@ -31,7 +30,7 @@ class ChainsFragment : Fragment ()
                     val heads= main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
                     val gen= main_cli_assert(arrayOf("chain", chain, "genesis"))
                     val blocks= main_cli_assert(arrayOf("chain", chain, "traverse", "all", gen)).listSplit().reversed().plus(gen)
-                    XChain(chain, heads, blocks)
+                    Chain(chain, heads, blocks)
                 }
         }
         this.adapter.notifyDataSetChanged()
@@ -75,7 +74,7 @@ class ChainsFragment : Fragment ()
             main_cli_assert(arrayOf("chain", chain, "get", mode, block)).take(LEN1000_pay)
         }
         AlertDialog.Builder(this.main)
-            .setTitle("Block ${block.block2id()}:")
+            .setTitle("Block ${block.block2out()}:")
             //.setView(msg)
             .setMessage(pay)
             .show()
@@ -99,7 +98,7 @@ class ChainsFragment : Fragment ()
             val chain = outer.data[i]
             val block = chain.blocks[j]
             val view = View.inflate(outer.main, android.R.layout.activity_list_item,null)
-            view.findViewById<TextView>(android.R.id.text1).text = block.block2id()
+            view.findViewById<TextView>(android.R.id.text1).text = block.block2out()
 
             view.setOnLongClickListener {
                 outer.fg_chain_get(chain.name, "block", block)
@@ -125,9 +124,9 @@ class ChainsFragment : Fragment ()
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_chains_chain,null)
             val chain = outer.data[i]
-            view.findViewById<TextView>(R.id.chain).text = chain.name.chain2id()
+            view.findViewById<TextView>(R.id.chain).text = chain.name.chain2out(outer.main.store.getPairs("ids") + outer.main.store.getPairs("cts"))
             view.findViewById<TextView>(R.id.heads).text = chain.heads
-                .map { it.block2id() }
+                .map { it.block2out() }
                 .joinToString("\n")
             view.tag = chain.name
             return view

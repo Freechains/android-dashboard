@@ -10,11 +10,9 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.freechains.cli.main_cli
-import org.freechains.cli.main_cli_assert
-import org.freechains.common.listSplit
 import kotlin.concurrent.thread
 
-data class XPeer (
+data class Peer (
     val name   : String,
     var ping   : String = "?",
     var chains : List<String> = emptyList()
@@ -24,10 +22,10 @@ class PeersFragment : Fragment ()
 {
     private val outer = this
     private lateinit var main:   MainActivity
-    private lateinit var peers:  List<XPeer>
+    private lateinit var peers:  List<Peer>
 
     fun bg_reload () {
-        val ret = mutableListOf<XPeer>()
+        val ret = mutableListOf<Peer>()
         this.main.bg (
             {
                 this.main.store.getKeys("peers")
@@ -39,7 +37,7 @@ class PeersFragment : Fragment ()
                             val chains = main_cli(arrayOf("peer", it, "chains")).let {
                                 if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
                             }
-                            ret.add(XPeer(it, ms, chains))
+                            ret.add(Peer(it, ms, chains))
                         }
                     }
                     .map { it.join() }
@@ -114,7 +112,7 @@ class PeersFragment : Fragment ()
                                    convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_peers_chain,null)
             val chain = outer.peers[i].chains[j]
-            view.findViewById<TextView>(R.id.chain).text = chain.chain2id()
+            view.findViewById<TextView>(R.id.chain).text = chain.chain2out(outer.main.store.getPairs("ids") + outer.main.store.getPairs("cts"))
             // why was this here? if cannot find the answer, remove it (03/07/20)
             //if (outer.main.store.getKeys("chains").none { it == outer.peers[i].chains[j] }) {
                 view.findViewById<ImageButton>(R.id.add).let {

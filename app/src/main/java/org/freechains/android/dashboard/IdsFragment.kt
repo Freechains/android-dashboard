@@ -8,10 +8,7 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import kotlinx.android.synthetic.main.frag_ids_id.*
 import org.freechains.cli.main_cli_assert
-import org.freechains.common.listSplit
-import kotlin.concurrent.thread
 
 class IdsFragment : Fragment ()
 {
@@ -20,13 +17,7 @@ class IdsFragment : Fragment ()
     private lateinit var data: List<Pair<String,String>>
 
     fun reload () {
-        this.data = this.main.store.data["ids"].let {
-            if (it == null) {
-                emptyList()
-            } else {
-                it.toList()
-            }
-        }
+        this.data = this.main.store.getPairs("ids")
         this.adapter.notifyDataSetChanged()
     }
 
@@ -126,7 +117,7 @@ class IdsFragment : Fragment ()
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_ids_id,null)
             view.findViewById<TextView>(R.id.nick).text = outer.data[i].second
-            view.findViewById<TextView>(R.id.pub) .text = outer.data[i].first.pub2id()
+            view.findViewById<TextView>(R.id.pub) .text = outer.data[i].first.pub2out()
             view.tag = outer.data[i].first
             return view
         }

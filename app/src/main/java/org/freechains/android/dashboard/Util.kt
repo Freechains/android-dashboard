@@ -7,28 +7,33 @@ import android.text.style.ClickableSpan
 import android.text.style.URLSpan
 import android.view.View
 import android.widget.TextView
+import org.freechains.host.hashSplit
+import org.freechains.host.toHeight
 
 const val LEN1000_pay = 1000
 const val LEN10_shared = 10
 const val LEN20_pubpbt = 1  // TODO 20
 const val SYNC = "\$sync"
 
-fun String.block2id () : String {
-    return this.take(5) + "..." + this.takeLast(3)
+fun String.block2out () : String {
+    val (height,hash) = this.hashSplit()
+    return height.toString() + "_" + hash.take(3) + "..." + hash.takeLast(3)
 }
 
-fun String.pub2id () : String {
+fun String.pub2out () : String {
     return this.take(3) + "..." + this.takeLast(3)
 }
 
-fun String.chain2id () : String {
+fun String.chain2out (ids: List<Pair<String,String>>) : String {
     return when {
         this.startsWith('@') -> {
-            val n = if (this.startsWith("@!")) 5 else 4
-            this.take(n) + "..." + this.takeLast(3)
+            val n = if (this.startsWith("@!")) 2 else 1
+            val pub = this.drop(n)
+            val id = ids.firstOrNull{ it.first == pub }.let { if (it == null) pub.pub2out() else it.second }
+            this.take(n) + id
         }
-        this.startsWith("\$bootstrap.") -> {
-            this.take("\$bootstrap.123".length) + "..." + this.takeLast(3)
+        this.startsWith("\$sync.") -> {
+            this.take("\$sync.123".length) + "..." + this.takeLast(3)
         }
         else -> this
     }

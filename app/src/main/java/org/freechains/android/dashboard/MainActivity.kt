@@ -9,16 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.text.Html
-import android.text.SpannableStringBuilder
-import android.text.method.LinkMovementMethod
-import android.text.style.ClickableSpan
-import android.text.style.URLSpan
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
@@ -33,12 +27,7 @@ import org.freechains.host.main_host
 import org.freechains.store.Store
 import org.freechains.sync.CBs
 import org.freechains.sync.Sync
-import java.io.DataInputStream
-import java.io.DataOutputStream
 import java.io.File
-import java.net.Socket
-import java.util.*
-import kotlin.collections.ArrayDeque
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity ()
@@ -76,7 +65,7 @@ class MainActivity : AppCompatActivity ()
         thread { main_host(arrayOf("start","/data/")) }
         Thread.sleep(500)
 
-        // bootstrap chain
+        // sync chain
         main_cli(arrayOf("chains", "join", SYNC, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
         //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
 
@@ -246,7 +235,7 @@ class MainActivity : AppCompatActivity ()
             }
             this.store.store("chains", chain, key)
         }
-        this.showToast("Added chain ${chain.chain2id()}.")
+        this.showToast("Added chain ${chain.chain2out(emptyList())}.")
     }
 
     fun rem_ask (pre: String, cur: String, act: ()->Unit) {
