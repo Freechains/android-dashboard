@@ -189,6 +189,20 @@ class MainActivity : AppCompatActivity ()
         }
     }
 
+    fun setWaiting (v: Boolean) {
+        val wait = findViewById<View>(R.id.wait)
+        if (v) {
+            wait.visibility = View.VISIBLE
+            this.getWindow().setFlags (
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            );
+        } else {
+            wait.visibility = View.INVISIBLE
+            this.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        }
+    }
+
     private fun showNotification (title: String, message: String) {
         val mNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -266,10 +280,6 @@ class MainActivity : AppCompatActivity ()
         this.showToast("Added chain ${chain.chain2id()}.")
     }
 
-    ////////////////////////////////////////
-
-    ////////////////////////////////////////
-
     fun rem_ask (pre: String, cur: String, act: ()->Unit) {
         AlertDialog.Builder(this)
             .setTitle("Remove $pre $cur?")
@@ -277,49 +287,6 @@ class MainActivity : AppCompatActivity ()
             .setPositiveButton(android.R.string.yes, { _, _ ->
                 act()
                 this.showToast("Removed $pre $cur.")
-            })
-            .setNegativeButton(android.R.string.no, null).show()
-    }
-
-    fun cts_add_ask () {
-        val view = View.inflate(this, R.layout.frag_cts_add, null)
-        AlertDialog.Builder(this)
-            .setTitle("New contact:")
-            .setView(view)
-            .setNegativeButton ("Cancel", null)
-            .setPositiveButton("OK") { _,_ ->
-                val nick = view.findViewById<EditText>(R.id.edit_nick).text.toString()
-                val pub  = view.findViewById<EditText>(R.id.edit_pub) .text.toString()
-
-                val ok = LOCAL.write_tst(true) {
-                    if (it.cts.none { it.nick==nick || it.pub==pub }) {
-                        it.cts += Id(nick, pub)
-                        true
-                    } else {
-                        false
-                    }
-                }
-                val ret =
-                    if (ok) {
-                        this.fg_chain_join("@" + pub)
-                        "Added contact $nick."
-                    } else {
-                        "Contact already exists."
-                    }
-                this.showToast(ret)
-            }
-            .show()
-    }
-
-    fun cts_remove_ask (nick: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Remove contact $nick?")
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setPositiveButton(android.R.string.yes, { _, _ ->
-                LOCAL.write(true) {
-                    it.cts = it.cts.filter { it.nick != nick }
-                }
-                this.showToast("Removed contact $nick.")
             })
             .setNegativeButton(android.R.string.no, null).show()
     }
