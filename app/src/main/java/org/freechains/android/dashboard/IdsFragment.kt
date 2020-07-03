@@ -42,7 +42,7 @@ class IdsFragment : Fragment ()
                         val pub = view.tag.toString()
                         this.main.rem_ask("identity", pub) {
                             this.main.fg {
-                                this.main.store.store("ids", pub, "REM") // todo nao deveria sync
+                                this.main.store.store("ids", pub, "REM")
                                 this.main.store.store("chains", "@"+pub, "REM")
                             }
                             this.reload()
