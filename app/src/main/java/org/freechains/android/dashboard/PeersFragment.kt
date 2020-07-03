@@ -115,7 +115,8 @@ class PeersFragment : Fragment ()
             val view = View.inflate(outer.main, R.layout.frag_peers_chain,null)
             val chain = outer.peers[i].chains[j]
             view.findViewById<TextView>(R.id.chain).text = chain.chain2id()
-            if (!LOCAL.read { it.chains.any { it.name == outer.peers[i].chains[j] } }) {
+            // why was this here? if cannot find the answer, remove it (03/07/20)
+            //if (outer.main.store.getKeys("chains").none { it == outer.peers[i].chains[j] }) {
                 view.findViewById<ImageButton>(R.id.add).let {
                     it.visibility = if (outer.main.store.getKeys("chains").contains(chain)) View.INVISIBLE else View.VISIBLE
                     it.setOnClickListener {
@@ -129,7 +130,7 @@ class PeersFragment : Fragment ()
                         }
                     }
                 }
-            }
+            //}
             return view
         }
         override fun getChildrenCount (i: Int): Int {

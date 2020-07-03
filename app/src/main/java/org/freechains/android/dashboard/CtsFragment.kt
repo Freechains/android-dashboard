@@ -62,8 +62,10 @@ class CtsFragment : Fragment ()
                             val pub = view.findViewById<EditText>(R.id.edit_pub).text.toString()
                             val ok = this.data.none { it.first==pub || it.second==nick }
                             if (ok) {
-                                this.main.store.store("cts", pub, nick)
-                                this.main.store.store("chains", "@" + pub, "ADD")
+                                this.main.fg {
+                                    this.main.store.store("cts", pub, nick)
+                                    this.main.store.store("chains", "@" + pub, "ADD")
+                                }
                                 this.main.runOnUiThread {
                                     this.reload()
                                     this.main.showToast("Added contact $nick.")

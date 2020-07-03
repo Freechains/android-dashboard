@@ -41,36 +41,6 @@ import java.util.*
 import kotlin.collections.ArrayDeque
 import kotlin.concurrent.thread
 
-fun makeLinkClickable (strBuilder: SpannableStringBuilder, span: URLSpan, cb: (String)->Unit) {
-    val start: Int = strBuilder.getSpanStart(span)
-    val end: Int = strBuilder.getSpanEnd(span)
-    val flags: Int = strBuilder.getSpanFlags(span)
-    val clickable: ClickableSpan = object : ClickableSpan() {
-        override fun onClick(view: View) {
-            cb(span.url)
-        }
-    }
-    strBuilder.setSpan(clickable, start, end, flags)
-    strBuilder.removeSpan(span)
-}
-
-fun TextView.setTextViewHTML (html: String, cb: (String)->Unit) {
-    val sequence: CharSequence = Html.fromHtml(html)
-    val strBuilder = SpannableStringBuilder(sequence)
-    val urls = strBuilder.getSpans(0, sequence.length, URLSpan::class.java)
-    for (span in urls) {
-        makeLinkClickable(strBuilder, span!!, cb)
-    }
-    this.text = strBuilder
-    this.movementMethod = LinkMovementMethod.getInstance()
-}
-
-const val T5m_sync    = 30*hour
-const val LEN1000_pay = 1000
-const val LEN10_shared = 10
-const val LEN20_pubpbt = 1  // TODO 20
-const val SYNC = "\$sync"
-
 class MainActivity : AppCompatActivity ()
 {
     lateinit var store: Store
@@ -101,7 +71,6 @@ class MainActivity : AppCompatActivity ()
         //println(">>> VERSION = $VERSION")
         fsRoot = this.applicationContext.filesDir.toString()
         //File(fsRoot!!, "/").deleteRecursively() ; error("OK")
-        LOCAL.load()
 
         // background start
         thread { main_host(arrayOf("start","/data/")) }
