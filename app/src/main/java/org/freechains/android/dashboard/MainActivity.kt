@@ -27,13 +27,13 @@ import org.freechains.host.main_host
 import org.freechains.store.Store
 import org.freechains.sync.CBs
 import org.freechains.sync.Sync
-import java.io.File
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity ()
 {
     lateinit var store: Store
     lateinit var sync:  Sync
+    lateinit var login_alert: AlertDialog
 
     //private var isActive = true
     //override fun onPause()  { super.onPause()  ; this.isActive=false }
@@ -65,17 +65,75 @@ class MainActivity : AppCompatActivity ()
         thread { main_host(arrayOf("start","/data/")) }
         Thread.sleep(500)
 
-        // sync chain
-        this.fg {
-            main_cli(arrayOf("chains", "join", SYNC, "36EE6324B91D6F04BA321B0EA6A09F9854E75DE5C0959FA73570A15EA385AB34"))
-            //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
+        val sync = this.fg {
+            main_cli_assert(arrayOf("chains", "list"))
+                .listSplit()
+                .firstOrNull { it.startsWith("\$sync.") } ?: ""
         }
 
+        if (sync.isEmpty()) {
+            this.login()
+        } else {
+            this.start(sync)
+        }
+    }
+
+    fun login () {
+        val view = View.inflate(this, R.layout.login, null)
+        this.login_alert = AlertDialog.Builder(this)
+            .setTitle("Welcome to Freechains:")
+            .setView(view)
+            .setCancelable(false)
+            .show()
+    }
+
+    fun login_new (v: View) {
+        val view = View.inflate(this, R.layout.frag_ids_add, null)
+        AlertDialog.Builder(this)
+            .setTitle("New account:")
+            .setView(view)
+            .setNegativeButton ("Cancel", null)
+            .setPositiveButton("OK") { _,_ ->
+                val nick  = view.findViewById<EditText>(R.id.edit_nick).text.toString()
+                val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
+                val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
+                if (nick.isNotEmpty() && pass1.length>=LEN20_pubpbt && pass1==pass2) {
+                    this.login_alert.hide()
+                    this.bg({
+                        val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass1)).split(' ')[0]
+                        val sha = main_cli_assert(arrayOf("crypto", "shared", pass1))
+                        val sync = "\$sync.$pub"
+                        main_cli_assert(arrayOf("chains", "join", sync, sha))
+                        this.start(sync)
+                        this.store.store("ids", pub, nick)
+                        this.store.store("chains", "@" + pub, "ADD")
+                        this.store.store("chains", sync, sha)
+                    }, {
+                    })
+                } else {
+                    this.showToast("Invalid nickname or password.")
+                }
+            }
+            .show()
+    }
+
+    fun login_sync (v: View) {
+        val view = View.inflate(this, R.layout.login_sync, null)
+        AlertDialog.Builder(this)
+            .setTitle("Sync account:")
+            .setView(view)
+            .setNegativeButton ("Cancel", null)
+            .setPositiveButton("OK") { _,_ -> Unit}
+            .show()
+        //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
+    }
+
+    fun start (sync: String) {
         var recvs = mutableMapOf<String,Int>()
         var syncs = 0
         val progress = findViewById<ProgressBar>(R.id.progress)
 
-        this.store = Store(SYNC, PORT_8330) ; Thread.sleep(500) // wait first update
+        this.store = Store(sync, PORT_8330) ; Thread.sleep(500) // wait first update
         this.sync  = Sync(this.store, CBs(
             { tot ->
                 //println("+++ max $tot")
@@ -115,7 +173,7 @@ class MainActivity : AppCompatActivity ()
                         if (news_str.isNotEmpty()) {
                             this.showNotification("New blocks:", news_str)
                         }
-                        println("SYNC $syncs")
+                        //println("SYNC $syncs")
                         this.showToast("Synchronized $syncs blocks.")
                         progress.visibility = View.INVISIBLE
                         recvs = mutableMapOf<String,Int>()

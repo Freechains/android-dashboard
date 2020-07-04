@@ -55,7 +55,7 @@ class IdsFragment : Fragment ()
                             val nick  = view.findViewById<EditText>(R.id.edit_nick).text.toString()
                             val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
                             val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
-                            if (pass1.length>=LEN20_pubpbt && pass1==pass2) {
+                            if (nick.isNotEmpty() && pass1.length>=LEN20_pubpbt && pass1==pass2) {
                                 this.main.fg {
                                     val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass1)).split(' ')[0]
                                     val ok = this.data.none { it.first==pub || it.second==nick }
@@ -73,7 +73,7 @@ class IdsFragment : Fragment ()
                                     }
                                 }
                             } else {
-                                this.main.showToast("Invalid password.")
+                                this.main.showToast("Invalid nickname or password.")
                             }
                         }
                         .show()
@@ -117,7 +117,7 @@ class IdsFragment : Fragment ()
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_ids_id,null)
             view.findViewById<TextView>(R.id.nick).text = outer.data[i].second
-            view.findViewById<TextView>(R.id.pub) .text = outer.data[i].first.pub2out()
+            view.findViewById<TextView>(R.id.pub) .text = outer.data[i].first.pub2out(emptyList())
             view.tag = outer.data[i].first
             return view
         }

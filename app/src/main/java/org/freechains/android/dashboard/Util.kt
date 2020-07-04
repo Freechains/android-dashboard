@@ -13,15 +13,20 @@ import org.freechains.host.toHeight
 const val LEN1000_pay = 1000
 const val LEN10_shared = 10
 const val LEN20_pubpbt = 1  // TODO 20
-const val SYNC = "\$sync"
 
 fun String.block2out () : String {
     val (height,hash) = this.hashSplit()
     return height.toString() + "_" + hash.take(3) + "..." + hash.takeLast(3)
 }
 
-fun String.pub2out () : String {
-    return this.take(3) + "..." + this.takeLast(3)
+fun String.pub2out (ids: List<Pair<String,String>>) : String {
+    return ids.firstOrNull{ it.first == this }.let {
+        if (it == null) {
+            this.take(3) + "..." + this.takeLast(3)
+        } else {
+            it.second
+        }
+    }
 }
 
 fun String.chain2out (ids: List<Pair<String,String>>) : String {
@@ -29,11 +34,11 @@ fun String.chain2out (ids: List<Pair<String,String>>) : String {
         this.startsWith('@') -> {
             val n = if (this.startsWith("@!")) 2 else 1
             val pub = this.drop(n)
-            val id = ids.firstOrNull{ it.first == pub }.let { if (it == null) pub.pub2out() else it.second }
-            this.take(n) + id
+            this.take(n) + pub.pub2out(ids)
         }
         this.startsWith("\$sync.") -> {
-            this.take("\$sync.123".length) + "..." + this.takeLast(3)
+            val n = "\$sync.".length
+            this.take(n) + this.drop(n).pub2out(ids)
         }
         else -> this
     }

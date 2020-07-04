@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent" android:orientation="vertical">
+
+    <Space
+            android:layout_width="1dp"
+            android:layout_height="30dp"/>
+
+    <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" app:srcCompat="@drawable/ic_note_add_black_24dp"
+            android:id="@+id/img_new" android:layout_weight="1" android:minHeight="?attr/listPreferredItemHeight"
+            android:onClick="login_new"/>
+    <TextView
+            android:text="New account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:id="@+id/lbl_new" android:layout_weight="1"
+            android:gravity="center"/>
+
+    <Space
+            android:layout_width="1dp"
+            android:layout_height="30dp"/>
+
+    <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" app:srcCompat="@drawable/ic_cloud_download_sync_24dp"
+            android:id="@+id/img_sync" android:layout_weight="1" android:minHeight="?attr/listPreferredItemHeight"
+            android:onClick="login_sync"/>
+    <TextView
+            android:text="Sync account"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:id="@+id/lbl_sync" android:layout_weight="1"
+            android:gravity="center"/>
+
+    <Space
+            android:layout_width="1dp"
+            android:layout_height="30dp"/>
+</LinearLayout>

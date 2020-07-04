@@ -110,7 +110,7 @@ class CtsFragment : Fragment ()
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_ids_id,null)
             view.findViewById<TextView>(R.id.nick).text = outer.data[i].second
-            view.findViewById<TextView>(R.id.pub) .text = outer.data[i].first.pub2out()
+            view.findViewById<TextView>(R.id.pub) .text = outer.data[i].first.pub2out(emptyList())
             view.tag =outer.data[i].second
             return view
         }

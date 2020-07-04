@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <Space
+            android:layout_width="1dp"
+            android:layout_height="30dp"/>
+
+    <EditText
+            android:id="@+id/edit_nick"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="Nickname"
+            android:inputType="textPersonName"/>
+
+    <EditText
+            android:id="@+id/edit_pass1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="Password"
+            android:inputType="textPassword" />
+
+    <EditText
+            android:id="@+id/edit_peer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="Peer to sync"
+            android:inputType="textUri"/>
+
+    <Space
+            android:layout_width="1dp"
+            android:layout_height="30dp"/>
+
+</LinearLayout>
