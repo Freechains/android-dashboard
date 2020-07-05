@@ -112,7 +112,7 @@ class PeersFragment : Fragment ()
                                    convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_peers_chain,null)
             val chain = outer.peers[i].chains[j]
-            view.findViewById<TextView>(R.id.chain).text = chain.chain2out(outer.main.store.getPairs("ids") + outer.main.store.getPairs("cts"))
+            view.findViewById<TextView>(R.id.chain).text = outer.main.chain2out(chain)
             // why was this here? if cannot find the answer, remove it (03/07/20)
             //if (outer.main.store.getKeys("chains").none { it == outer.peers[i].chains[j] }) {
                 view.findViewById<ImageButton>(R.id.add).let {

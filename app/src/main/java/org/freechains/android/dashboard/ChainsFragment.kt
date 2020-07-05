@@ -27,6 +27,7 @@ class ChainsFragment : Fragment ()
         this.data = this.main.fg {
             this.main.store.getKeys("chains")
                 .map { chain ->
+                    //println(">>> $chain")
                     val heads= main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
                     val gen= main_cli_assert(arrayOf("chain", chain, "genesis"))
                     val blocks= main_cli_assert(arrayOf("chain", chain, "traverse", "all", gen)).listSplit().reversed().plus(gen)
@@ -124,7 +125,7 @@ class ChainsFragment : Fragment ()
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_chains_chain,null)
             val chain = outer.data[i]
-            view.findViewById<TextView>(R.id.chain).text = chain.name.chain2out(outer.main.store.getPairs("ids") + outer.main.store.getPairs("cts"))
+            view.findViewById<TextView>(R.id.chain).text = outer.main.chain2out(chain.name)
             view.findViewById<TextView>(R.id.heads).text = chain.heads
                 .map { it.block2out() }
                 .joinToString("\n")
