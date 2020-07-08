@@ -162,7 +162,7 @@ class MainActivity : AppCompatActivity ()
             this.store = Store(sync, PORT_8330)
         }
         this.sync = Sync(this.store, CBs(
-            { tot ->
+            { tot -> if (tot == 0) return@CBs
                 //println("+++ max $tot")
                 this.runOnUiThread {
                     //println("+++ todo $tot")
@@ -190,7 +190,7 @@ class MainActivity : AppCompatActivity ()
                     }
                 }
             },
-            {
+            { tot -> if (tot == 0) return@CBs
                 this.runOnUiThread {
                     if (progress.progress == progress.max) {
                         //println("+++ done ${progress.max}")
