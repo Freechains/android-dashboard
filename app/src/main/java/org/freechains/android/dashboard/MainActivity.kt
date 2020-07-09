@@ -161,7 +161,7 @@ class MainActivity : AppCompatActivity ()
         this.fg {
             this.store = Store(sync, PORT_8330)
         }
-        this.sync = Sync(this.store, CBs(
+        this.sync = Sync(this.store, null, CBs(
             { tot -> if (tot == 0) return@CBs
                 //println("+++ max $tot")
                 this.runOnUiThread {
@@ -175,7 +175,7 @@ class MainActivity : AppCompatActivity ()
                     }
                 }
             },
-            { chain, action, (ok,nn) ->
+            { _, chain, action, (ok,nn) ->
                 this.runOnUiThread {
                     progress.progress += 1
                     if (!ok) return@runOnUiThread
