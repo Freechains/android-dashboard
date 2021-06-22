@@ -45,14 +45,14 @@ class CtsFragment : Fragment ()
             }
             view.findViewById<FloatingActionButton>(R.id.but_add).let {
                 it.setOnClickListener {
-                    val view = View.inflate(this.main, R.layout.frag_cts_add, null)
+                    val vw = View.inflate(this.main, R.layout.frag_cts_add, null)
                     AlertDialog.Builder(this.main)
                         .setTitle("New contact:")
-                        .setView(view)
+                        .setView(vw)
                         .setNegativeButton ("Cancel", null)
                         .setPositiveButton("OK") { _,_ ->
-                            val nick= view.findViewById<EditText>(R.id.edit_nick).text.toString()
-                            val pub = view.findViewById<EditText>(R.id.edit_pub).text.toString()
+                            val nick= vw.findViewById<EditText>(R.id.edit_nick).text.toString()
+                            val pub = vw.findViewById<EditText>(R.id.edit_pub).text.toString()
                             val ok = this.data.none { it.first==pub || it.second==nick }
                             if (ok) {
                                 this.main.fg {

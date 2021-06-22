@@ -46,15 +46,15 @@ class IdsFragment : Fragment ()
             }
             view.findViewById<FloatingActionButton>(R.id.but_add).let {
                 it.setOnClickListener {
-                    val view = View.inflate(this.main, R.layout.frag_ids_add, null)
+                    val vw = View.inflate(this.main, R.layout.frag_ids_add, null)
                     AlertDialog.Builder(this.main)
                         .setTitle("New identity:")
-                        .setView(view)
+                        .setView(vw)
                         .setNegativeButton ("Cancel", null)
                         .setPositiveButton("OK") { _,_ ->
-                            val nick  = view.findViewById<EditText>(R.id.edit_nick).text.toString()
-                            val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
-                            val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
+                            val nick  = vw.findViewById<EditText>(R.id.edit_nick).text.toString()
+                            val pass1 = vw.findViewById<EditText>(R.id.edit_pass1).text.toString()
+                            val pass2 = vw.findViewById<EditText>(R.id.edit_pass2).text.toString()
                             if (nick.isNotEmpty() && pass1.length>=LEN20_pubpbt && pass1==pass2) {
                                 this.main.fg {
                                     val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass1)).split(' ')[0]

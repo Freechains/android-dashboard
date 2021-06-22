@@ -27,6 +27,7 @@ import org.freechains.host.main_host
 import org.freechains.store.Store
 import org.freechains.sync.CBs
 import org.freechains.sync.Sync
+import java.io.File
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity ()
