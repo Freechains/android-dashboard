@@ -1,12 +1,11 @@
-local.properties
-proguard-rules.pro
-*.iml
 build/
 .gradle/
 gradle/
+gradle.properties
 gradlew
 gradlew.bat
 .idea/
 META-INF/
 out/
+settings.gradle
 .*.swp
