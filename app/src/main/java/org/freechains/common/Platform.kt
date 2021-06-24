@@ -1,6 +1,6 @@
 package org.freechains.common
 
-import com.goterl.lazysodium.SodiumAndroid
+import com.goterl.lazysodium.*
 
 val lazySodium: LazySodiumAndroid = LazySodiumAndroid(SodiumAndroid())
 
