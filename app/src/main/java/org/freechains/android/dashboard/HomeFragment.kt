@@ -27,14 +27,8 @@ class HomeFragment : Fragment ()
             view.findViewById<ImageView>(R.id.but_peers).setOnClickListener { it ->
                 it.findNavController().navigate(R.id.nav_peers)
             }
-            view.findViewById<ImageView>(R.id.but_identity).setOnClickListener { it ->
-                it.findNavController().navigate(R.id.nav_identity)
-            }
-            view.findViewById<ImageView>(R.id.but_contacts).setOnClickListener { it ->
-                it.findNavController().navigate(R.id.nav_contacts)
-            }
             view.findViewById<ImageView>(R.id.but_sync).setOnClickListener {
-                thread { this.main.sync.sync_all() }
+                thread { this.main.sync() }
             }
             view.findViewById<ImageView>(R.id.but_reset).setOnClickListener { _ ->
                 AlertDialog.Builder(this.main)

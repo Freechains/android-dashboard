@@ -10,6 +10,8 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.freechains.cli.main_cli
+import org.freechains.cli.main_cli_assert
+import org.freechains.common.listSplit
 import kotlin.concurrent.thread
 
 data class Peer (
@@ -28,12 +30,14 @@ class PeersFragment : Fragment ()
         val ret = mutableListOf<Peer>()
         this.main.bg (
             {
-                this.main.store.getKeys("peers")
+                this.main.local.peers
                     .map {
                         thread {
+                            //println("ping " + it)
                             val ms = main_cli(arrayOf("peer", it, "ping")).let {
                                 if (!it.first) "down" else it.second + "ms"
                             }
+                            //println("ms " + ms)
                             val chains = main_cli(arrayOf("peer", it, "chains")).let {
                                 if (!it.first || it.second.isEmpty()) emptyList() else it.second.split(' ')
                             }
@@ -62,7 +66,8 @@ class PeersFragment : Fragment ()
                         val peer = view.tag.toString()
                         this.main.rem_ask("peer", peer) {
                             this.main.fg {
-                                this.main.store.store("peers", peer, "REM")
+                                this.main.local.peers.remove(peer)
+                                this.main.local.fsSave()
                             }
                             this.bg_reload()
                         }
@@ -83,7 +88,8 @@ class PeersFragment : Fragment ()
                         .setPositiveButton("OK") { _,_ ->
                             val peer = input.text.toString()
                             this.main.fg {
-                                this.main.store.store("peers", peer, "ADD")
+                                this.main.local.peers.add(peer)
+                                this.main.local.fsSave()
                             }
                             this.bg_reload()
                             this.main.showToast("Added peer $peer.")
@@ -112,19 +118,22 @@ class PeersFragment : Fragment ()
                                    convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_peers_chain,null)
             val chain = outer.peers[i].chains[j]
-            view.findViewById<TextView>(R.id.chain).text = outer.main.chain2out(chain)
+            view.findViewById<TextView>(R.id.chain).text = chain.chain2out()
             // why was this here? if cannot find the answer, remove it (03/07/20)
             //if (outer.main.store.getKeys("chains").none { it == outer.peers[i].chains[j] }) {
                 view.findViewById<ImageButton>(R.id.add).let {
-                    it.visibility = if (outer.main.store.getKeys("chains").contains(chain)) View.INVISIBLE else View.VISIBLE
-                    it.setOnClickListener {
-                        if (chain.startsWith('$')) {
-                            outer.main.chains_join_ask(chain) {
+                    outer.main.fg {
+                        val chains = main_cli_assert(arrayOf("chains", "list")).listSplit()
+                        it.visibility = if (chains.contains(chain)) View.INVISIBLE else View.VISIBLE
+                        it.setOnClickListener {
+                            if (chain.startsWith('@')) {
+                                outer.main.fg_chain_join(chain, emptyList(), null)
                                 outer.bg_reload()
+                            } else {
+                                outer.main.chains_join_ask(chain) {
+                                    outer.bg_reload()
+                                }
                             }
-                        } else {
-                            outer.main.fg_chain_join(chain)
-                            outer.bg_reload()
                         }
                     }
                 }

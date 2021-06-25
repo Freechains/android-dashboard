@@ -16,6 +16,14 @@
         android:inputType="textPersonName" />
 
     <EditText
+            android:id="@+id/edit_pioneers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="Pioneers (# chains, use space for multiple)"
+            android:inputType="textPersonName" />
+
+    <EditText
         android:id="@+id/edit_pass1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

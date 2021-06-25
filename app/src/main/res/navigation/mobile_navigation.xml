@@ -23,16 +23,4 @@
         android:label="Peers"
         tools:layout="@layout/frag_peers" />
 
-    <fragment
-        android:id="@+id/nav_identity"
-        android:name="org.freechains.android.dashboard.IdsFragment"
-        android:label="Identity"
-        tools:layout="@layout/frag_ids_id" />
-
-    <fragment
-        android:id="@+id/nav_contacts"
-        android:name="org.freechains.android.dashboard.CtsFragment"
-        android:label="Contacts"
-        tools:layout="@layout/frag_ids_id" />
-
 </navigation>

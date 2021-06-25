@@ -64,54 +64,12 @@
 
         <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <ImageView
-                android:id="@+id/but_identity"
-                android:layout_width="0px"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:minHeight="?attr/listPreferredItemHeightSmall"
-                app:srcCompat="@drawable/ic_person_black_96dp" />
-
-            <ImageView
-                android:id="@+id/but_contacts"
-                android:layout_width="0px"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:minHeight="?attr/listPreferredItemHeightSmall"
-                app:srcCompat="@drawable/ic_people_black_96dp" />
-
-        </TableRow>
+            android:layout_height="match_parent"/>
 
         <TableRow
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:paddingBottom="30dp">
-
-            <TextView
-                android:id="@+id/lbl_identity"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:minHeight="?attr/listPreferredItemHeight"
-                android:text="Identity"
-                android:textSize="24sp" />
-
-            <TextView
-                android:id="@+id/lbl_contacts"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:minHeight="?attr/listPreferredItemHeight"
-                android:text="Contacts"
-                android:textSize="24sp" />
-
-        </TableRow>
+            android:paddingBottom="30dp"/>
 
         <TableRow
             android:layout_width="match_parent"

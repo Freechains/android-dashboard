@@ -15,30 +15,21 @@ const val LEN10_shared = 10
 const val LEN20_pubpbt = 1  // TODO 20
 
 fun String.block2out () : String {
+    //println(">>> " + this)
     val (height,hash) = this.hashSplit()
     return height.toString() + "_" + hash.take(3) + "..." + hash.takeLast(3)
 }
 
-fun String.pub2out (ids: List<Pair<String,String>>) : String {
-    return ids.firstOrNull{ it.first == this }.let {
-        if (it == null) {
-            this.take(3) + "..." + this.takeLast(3)
-        } else {
-            it.second
-        }
-    }
+fun String.pub2out () : String {
+    return this.take(3) + "..." + this.takeLast(3)
 }
 
-fun String.chain2out (ids: List<Pair<String,String>>) : String {
+fun String.chain2out () : String {
     return when {
         this.startsWith('@') -> {
             val n = if (this.startsWith("@!")) 2 else 1
             val pub = this.drop(n)
-            this.take(n) + pub.pub2out(ids)
-        }
-        this.startsWith("\$sync.") -> {
-            val n = "\$sync.".length
-            this.take(n) + this.drop(n).pub2out(ids)
+            this.take(n) + pub.pub2out()
         }
         else -> this
     }

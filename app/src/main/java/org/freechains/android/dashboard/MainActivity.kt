@@ -1,6 +1,5 @@
 package org.freechains.android.dashboard
 
-import org.freechains.common.*
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
@@ -23,22 +23,15 @@ import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import org.freechains.cli.main_cli
 import org.freechains.cli.main_cli_assert
+import org.freechains.common.fsRoot
+import org.freechains.common.listSplit
 import org.freechains.host.main_host
-import org.freechains.store.Store
-import org.freechains.sync.CBs
-import org.freechains.sync.Sync
-import java.io.File
 import kotlin.concurrent.thread
+
 
 class MainActivity : AppCompatActivity ()
 {
-    lateinit var store: Store
-    lateinit var sync:  Sync
-    lateinit var login_alert: AlertDialog
-
-    //private var isActive = true
-    //override fun onPause()  { super.onPause()  ; this.isActive=false }
-    //override fun onResume() { super.onResume() ; this.isActive=true  }
+    lateinit var local: Local
 
     override fun onDestroy () {
         main_cli(arrayOf("host", "stop"))
@@ -52,7 +45,7 @@ class MainActivity : AppCompatActivity ()
         findNavController(R.id.nav_host_fragment).let {
             this.setupActionBarWithNavController (
                 it,
-                AppBarConfiguration(setOf(R.id.nav_home, R.id.nav_chains, R.id.nav_peers, R.id.nav_identity))
+                AppBarConfiguration(setOf(R.id.nav_home, R.id.nav_chains, R.id.nav_peers, R.id.nav_sync))
             )
             findViewById<BottomNavigationView>(R.id.nav_view).setupWithNavController(it)
         }
@@ -66,153 +59,80 @@ class MainActivity : AppCompatActivity ()
         thread { main_host(arrayOf("start","/data/")) }
         Thread.sleep(250)
 
-        val sync = this.fg {
-            main_cli_assert(arrayOf("chains", "list"))
-                .listSplit()
-                .firstOrNull { it.startsWith("\$sync.") } ?: ""
+        if (!Local_fsExists()) {
+            Local().fsSave()
         }
-
-        if (sync.isEmpty()) {
-            this.login()
-        } else {
-            this.start(sync)
-        }
+        this.local = Local_fsLoad()
     }
 
-    fun login () {
-        val view = View.inflate(this, R.layout.login, null)
-        this.login_alert = AlertDialog.Builder(this)
-            .setTitle("Welcome to Freechains:")
-            .setView(view)
-            .setCancelable(false)
-            .show()
+    fun onClickSync (menuItem: MenuItem?): Boolean {
+        thread { this.sync() }
+        return true
     }
 
-    fun login_new (v: View) {
-        val view = View.inflate(this, R.layout.frag_ids_add, null)
-        AlertDialog.Builder(this)
-            .setTitle("New account:")
-            .setView(view)
-            .setNegativeButton ("Cancel", null)
-            .setPositiveButton("OK") { _,_ ->
-                val nick  = view.findViewById<EditText>(R.id.edit_nick).text.toString()
-                val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
-                val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
-                if (nick.isNotEmpty() && pass1.length>=LEN20_pubpbt && pass1==pass2) {
-                    this.login_alert.hide()
-                    this.bg({
-                        val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass1)).split(' ')[0]
-                        val sha = main_cli_assert(arrayOf("crypto", "shared", pass1))
-                        val sync = "\$sync.$pub"
-                        main_cli_assert(arrayOf("chains", "join", sync, sha))
-                        this.start(sync)
-                        this.store.store("ids", pub, nick)
-                        this.store.store("chains", "@" + pub, "ADD")
-                        this.store.store("chains", sync, sha)
-                    }, {
-                    })
-                } else {
-                    this.showToast("Invalid nickname or password.")
-                }
-            }
-            .show()
-    }
-
-    fun login_sync (v: View) {
-        val view = View.inflate(this, R.layout.login_sync, null)
-        AlertDialog.Builder(this)
-            .setTitle("Sync account:")
-            .setView(view)
-            .setNegativeButton ("Cancel", null)
-            .setPositiveButton("OK") { _,_ ->
-                val pass = view.findViewById<EditText>(R.id.edit_pass).text.toString()
-                val peer = view.findViewById<EditText>(R.id.edit_peer).text.toString()
-                this.login_alert.hide()
-                this.bg({
-                    val pub = main_cli_assert(arrayOf("crypto", "pubpvt", pass)).split(' ')[0]
-                    val sha = main_cli_assert(arrayOf("crypto", "shared", pass))
-                    val sync = "\$sync.$pub"
-                    val (v1,v2) = main_cli(arrayOf("peer", peer, "chains"))
-                    //println(">>>>>> $v1 $v2")
-                    if (v1 && v2.listSplit().contains(sync)) {
-                        main_cli_assert(arrayOf("chains", "join", sync, sha))
-                        this.start(sync)
-                        main_cli_assert(arrayOf("peer", peer, "recv", sync))
-                        //println("> CHAINS > ${main_cli_assert(arrayOf("chains", "list"))}")
-                        true
-                    } else {
-                        false
-                    }
-                }, { ok ->
-                    if (!ok) {
-                        this.showToast("Invalid password or peer.")
-                        this.login_alert.show()
-                    }
-                })
-            }
-            .show()
-        //main_cli(arrayOf("peer", "192.168.1.100", "recv", SYNC))
-    }
-
-    fun start (sync: String) {
-        var recvs = mutableMapOf<String,Int>()
-        var syncs = 0
+    @Synchronized
+    fun sync () {
         val progress = findViewById<ProgressBar>(R.id.progress)
+        progress.max = 0
+        progress.progress = 0
 
-        this.fg {
-            this.store = Store(sync, PORT_8330)
+        val recvs = mutableMapOf<String,Int>()
+        var syncs = 0
+        val chains = main_cli_assert(arrayOf("chains", "list")).listSplit()
+
+        val tot = chains.size * this.local.peers.size * 2
+        //println("+++ todo $tot")
+        if (tot == 0) {
+            return
         }
-        this.sync = Sync(this.store, null, CBs(
-            { tot -> if (tot == 0) return@CBs
-                //println("+++ max $tot")
-                this.runOnUiThread {
-                    //println("+++ todo $tot")
-                    if (tot > 0) {
-                        if (progress.max == 0) {
-                            progress.visibility = View.VISIBLE
-                            this.showToast("Synchronizing...")
-                        }
-                        progress.max += tot
-                    }
-                }
-            },
-            { _, chain, action, (ok,nn) ->
+
+        this.runOnUiThread {
+            if (progress.max == 0) {
+                progress.visibility = View.VISIBLE
+                showToast("Synchronizing...")
+            }
+            progress.max += tot
+        }
+
+        for (chain in chains) {
+            fun one (action: String, v: Pair<Boolean,String>) {
                 this.runOnUiThread {
                     progress.progress += 1
-                    if (!ok) return@runOnUiThread
-                    val (s1, _) = Regex("(\\d+) / (\\d+)").find(nn)!!.destructured
-                    val n1 = s1.toInt()
-                    syncs += n1
-                    if (n1 > 0) {
-                        if (action == "recv") {
-                            recvs[chain] = n1
-                        }
-                        this.showToast("${this.chain2out(chain)}: $action $n1")
-                    }
                 }
-            },
-            { tot -> if (tot == 0) return@CBs
-                this.runOnUiThread {
-                    if (progress.progress == progress.max) {
-                        //println("+++ done ${progress.max}")
-                        val news_str = recvs.toList()
-                            .map { "${it.second} ${it.first}" }
-                            .joinToString("\n")
-                        if (news_str.isNotEmpty()) {
-                            this.showNotification("New blocks:", news_str)
-                        }
-                        //println("SYNC $syncs")
-                        this.showToast("Synchronized $syncs blocks.")
-                        progress.visibility = View.INVISIBLE
-                        recvs = mutableMapOf<String,Int>()
-                        syncs = 0
-                        progress.max = 0
-                        progress.progress = 0
+                if (!v.first) return
+                val (s1, _) = Regex("(\\d+) / (\\d+)").find(v.second)!!.destructured
+                val n1 = s1.toInt()
+                syncs += n1
+                if (n1 > 0) {
+                    if (action == "recv") {
+                        recvs[chain] = n1
+                    }
+                    this.runOnUiThread {
+                        showToast("${chain.chain2out()}: $action $n1")
                     }
                 }
             }
-        ))
-        //this.sync.sync_all()
+
+            for (peer in this.local.peers) {
+                one("send", main_cli(arrayOf("peer", peer, "send", chain)))
+                one("recv", main_cli(arrayOf("peer", peer, "recv", chain)))
+            }
+        }
+
+        this.runOnUiThread {
+            if (progress.progress == progress.max) {
+                //println("+++ done ${progress.max}")
+                val news_str = recvs.toList()
+                    .map { "${it.second} ${it.first}" }
+                    .joinToString("\n")
+                if (news_str.isNotEmpty()) {
+                    this.showNotification("New blocks:", news_str)
+                }
+                //println("SYNC $syncs")
+                this.showToast("Synchronized $syncs blocks.")
+                progress.visibility = android.view.View.INVISIBLE
+            }
+        }
     }
 
     ////////////////////////////////////////
@@ -296,10 +216,6 @@ class MainActivity : AppCompatActivity ()
 
     ////////////////////////////////////////
 
-    fun chain2out (chain: String) : String {
-        return chain.chain2out(this.store.getPairs("ids") + this.store.getPairs("cts"))
-    }
-
     fun chains_join_ask (chain: String = "", cb: () -> Unit) {
         val view = View.inflate(this, R.layout.frag_chains_join, null)
         view.findViewById<EditText>(R.id.edit_name).setText(chain)
@@ -309,26 +225,54 @@ class MainActivity : AppCompatActivity ()
             .setNegativeButton ("Cancel", null)
             .setPositiveButton("OK") { _,_ ->
                 val name  = view.findViewById<EditText>(R.id.edit_name) .text.toString()
+                val pions = view.findViewById<EditText>(R.id.edit_pioneers).text.toString()
                 val pass1 = view.findViewById<EditText>(R.id.edit_pass1).text.toString()
                 val pass2 = view.findViewById<EditText>(R.id.edit_pass2).text.toString()
-                if (!name.startsWith('$') || (pass1.length>=LEN10_shared && pass1==pass2)) {
-                    fg_chain_join(name,pass1)
-                    cb()
-                } else {
-                    this.showToast("Invalid password.")
+                when {
+                    name.startsWith('$') -> {
+                        if (pass1.length>=LEN10_shared && pass1==pass2) {
+                            fg_chain_join(name, emptyList(), pass1)
+                            cb()
+                        } else {
+                            this.showToast("Invalid password.")
+                        }
+                    }
+                    name.startsWith('#') -> {
+                        val l = pions.listSplit()
+                        if (l.size > 0) {
+                            fg_chain_join(name, l, null)
+                            cb()
+                        } else {
+                            this.showToast("Invalid pioneers.")
+                        }
+                    }
+                    name.startsWith('@') -> {
+                        fg_chain_join(name, emptyList(), null)
+                    }
+                    else -> {
+                        this.showToast("Invalid name.")
+                    }
                 }
             }
             .show()
     }
 
-    fun fg_chain_join (chain: String, pass: String? = null) {
+    fun fg_chain_join (chain: String, pioneers: List<String>, pass: String? = null) {
         this.fg {
-            val key = if (!chain.startsWith('$')) "ADD" else {
-                main_cli_assert(arrayOf("crypto", "shared", pass!!))
+            when {
+                chain.startsWith('$') -> {
+                    val key = main_cli_assert(arrayOf("crypto", "shared", pass!!))
+                    main_cli_assert(arrayOf("chains", "join", chain, key))
+                }
+                chain.startsWith('#') -> {
+                    main_cli_assert(arrayOf("chains", "join", chain) + pioneers)
+                }
+                else -> {
+                    main_cli_assert(arrayOf("chains", "join", chain))
+                }
             }
-            this.store.store("chains", chain, key)
         }
-        this.showToast("Added chain ${this.chain2out(chain)}.")
+        this.showToast("Added chain ${chain.chain2out()}.")
     }
 
     fun rem_ask (pre: String, cur: String, act: ()->Unit) {

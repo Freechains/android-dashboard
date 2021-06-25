@@ -25,12 +25,12 @@ class ChainsFragment : Fragment ()
 
     fun fg_reload () {
         this.data = this.main.fg {
-            this.main.store.getKeys("chains")
+            main_cli_assert(arrayOf("chains", "list")).listSplit()
                 .map { chain ->
                     //println(">>> $chain")
-                    val heads= main_cli_assert(arrayOf("chain", chain, "heads", "all")).split(' ')
-                    val gen= main_cli_assert(arrayOf("chain", chain, "genesis"))
-                    val blocks= main_cli_assert(arrayOf("chain", chain, "traverse", "all", gen)).listSplit().reversed().plus(gen)
+                    val heads  = main_cli_assert(arrayOf("chain", chain, "heads")).split(' ')
+                    val gen    = main_cli_assert(arrayOf("chain", chain, "genesis"))
+                    val blocks = main_cli_assert(arrayOf("chain", chain, "traverse", gen)).listSplit().reversed().plus(gen)
                     Chain(chain, heads, blocks)
                 }
         }
@@ -49,7 +49,7 @@ class ChainsFragment : Fragment ()
                         val chain = view.tag.toString()
                         this.main.rem_ask("chain", chain) {
                             this.main.fg {
-                                this.main.store.store("chains", chain, "REM")
+                                main_cli_assert(arrayOf("chains", "leave", chain))
                             }
                             this.fg_reload()
                         }
@@ -125,8 +125,9 @@ class ChainsFragment : Fragment ()
         override fun getGroupView (i: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View? {
             val view = View.inflate(outer.main, R.layout.frag_chains_chain,null)
             val chain = outer.data[i]
-            view.findViewById<TextView>(R.id.chain).text = outer.main.chain2out(chain.name)
+            view.findViewById<TextView>(R.id.chain).text = chain.name.chain2out()
             view.findViewById<TextView>(R.id.heads).text = chain.heads
+                //.let { println(it); it }
                 .map { it.block2out() }
                 .joinToString("\n")
             view.tag = chain.name
